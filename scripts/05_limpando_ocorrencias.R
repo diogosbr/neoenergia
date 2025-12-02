@@ -1,35 +1,37 @@
 # Carregando os pacotes ---------------------------------------------------
-library(vroom)
-library(dplyr)
+library(readr)
 library(CoordinateCleaner)
 library(raster)
 library(dismo)
-#source("funcoes/ver_mapa.R")
+library(dplyr)
 
 # Importando os pontos de ocorrência --------------------------------------
-occ_raw <- vroom("dados/ocorrencias/ocorrencias_bruta.csv") %>% as.data.frame()
+occ_raw <- read_csv("dados/tabelas/ocorrencias_brutas_todas.csv")
 
-# Verifica inicio ...
-head(occ_raw)
+# Verifica inicio da tabela
+occ_raw
 
-# ... e final da tabela
-tail(occ_raw)
-
-# Número de ocorrências totais
-nrow(occ_raw)
+# Seleciona as colunas de interesse
+occ_coord <- 
+  occ_raw %>% 
+    select(scientificname, decimallongitude, decimallatitude) %>% 
+    filter(!is.na(decimallongitude))
 
 # Checando os dados de ocorrencia
-occ_clean <- clean_coordinates(occ_raw, species = "species",
-                               lon = 'decimalLongitude',
-                               lat = 'decimalLatitude',
+occ_clean <- clean_coordinates(occ_coord, 
+                               species = "scientificname",
+                               lon = 'decimallongitude',
+                               lat = 'decimallatitude',
                                tests = c("equal", "outliers", "zeros", 'dupl'),
                                value = "clean")
 
 # Número de ocorrências únicas
+nrow(occ_coord)
 nrow(occ_clean)
 
-# Selecionando as colunas longitude e latitude
-occ_clean <- dplyr::select(occ_clean, decimalLongitude, decimalLatitude)
+
+
+
 
 # Importando uma variável preditora
 var1 <- raster('dados/abioticos/presente/bio_01.tif')
@@ -53,3 +55,10 @@ nrow(occ_modelagem)
 # Salvando no disco
 write.csv(occ_modelagem, "dados/ocorrencias/ocorrencias_modelagem.csv",
           row.names = FALSE)
+
+
+
+
+# remover duplicatas (mesmo ponto presente nas duas fontes)
+occ_all_nodup <- occ_all %>%
+  distinct(species, decimallongitude, decimallatitude, year, .keep_all = TRUE)

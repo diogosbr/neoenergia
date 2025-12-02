@@ -1,3 +1,23 @@
+# Formata tempos tipo "2 min 30 sec" ou "1 h 05 min"
+format_time_hms <- function(x) {
+  total_sec <- as.numeric(x, units = "secs")
+  if (is.na(total_sec)) return("NA")
+  
+  total_sec <- round(total_sec)
+  hours <- total_sec %/% 3600
+  rem   <- total_sec %% 3600
+  mins  <- rem %/% 60
+  secs  <- rem %% 60
+  
+  parts <- c()
+  if (hours > 0) parts <- c(parts, sprintf("%d h", hours))
+  if (mins  > 0) parts <- c(parts, sprintf("%d min", mins))
+  if (secs  > 0 | length(parts) == 0) parts <- c(parts, sprintf("%d sec", secs))
+  
+  paste(parts, collapse = " ")
+}
+
+
 # Função de barra de progresso simples ------------------------------------
 progress_bar <- function(i, total_iterations, start_time, bar_width = 30) {
   
@@ -18,15 +38,15 @@ progress_bar <- function(i, total_iterations, start_time, bar_width = 30) {
     "%s %3d%% | elapsed: %s | ETA: %s",
     bar,
     floor(pct * 100),
-    format(elapsed_time, digits = 3),
-    format(estimated_time_left, digits = 3)
+    format_time_hms(elapsed_time),
+    format_time_hms(estimated_time_left)
   )
   
-  # \r volta para o início da linha e reescreve tudo
   cat("\r", line, "        ")
   
   if (i == total_iterations) cat("\n")
 }
+
 
 
 # Carregando os pacotes ---------------------------------------------------
@@ -37,7 +57,7 @@ library(readr)
 
 # Lista de espécies -------------------------------------------------------
 
-spp_list <- read_csv("dados/tabelas/spp_chafariz_consolidada.csv")
+spp_list <- read_csv("dados/tabelas/spp_chafariz_consolidada.csv", show_col_types = FALSE)
 spp <- spp_list$Espécie %>% unique()
 
 # Colunas desejadas (para garantir sempre o mesmo esquema)
@@ -114,8 +134,6 @@ for (i in seq_along(spp)) {
   )
 }
 
-close(pb)
-
 gbif_files <- list.files("dados/tabelas/gbif/", pattern = "csv$", full.names = T)
-occ_raw_gbif <- lapply(gbif_files, read_csv) %>% bind_rows()
+occ_raw_gbif <- lapply(gbif_files, read_csv, show_col_types = FALSE) %>% bind_rows()
 write_csv(occ_raw_gbif, "dados/tabelas/ocorrencias_gbif.csv")
