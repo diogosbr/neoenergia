@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+
+dados/tabelas/
+scripts/spThin.R
+scripts/02_clean_records_FOX.R
+sig/
