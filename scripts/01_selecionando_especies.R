@@ -14,7 +14,7 @@ lista_spp <-
          latitude = as.numeric(latitude))
 
 # Bacia nivel 4
-bho_nv4 <- vect("sig/Shapes/geoft_bho_ach_otto_nivel_04.gpkg")
+#bho_nv4 <- vect("sig/Shapes/geoft_bho_ach_otto_nivel_04.gpkg")
 bho_nv5 <- vect("sig/Shapes/geoft_bho_ach_otto_nivel_05.gpkg")
 
 # Bacia nivel 4
@@ -26,8 +26,8 @@ chafariz_pts <- vect("sig/Shapes/01. CHAFARIZ/prj_Aerogeradores_pt_CHAFARIZ.shp"
 
 # Bacias que contem chafariz
 #bho_chafariz <- bho_nv4[bho_nv4$wts_cd_pfafstetterbasin %in% c(7584, 7562, 7564),]
-bho_chafariz <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c(3340, 3298, 3295, 12869, 3308),]
 bho_chafariz <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c(75622, 75646, 75624, 75628, 75848),]
+bho_chafariz <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c(75624, 75622),]
 
 # plot
 plot(bho_chafariz)
