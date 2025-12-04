@@ -17,7 +17,6 @@ format_time_hms <- function(x) {
   paste(parts, collapse = " ")
 }
 
-
 # Função de barra de progresso simples ------------------------------------
 progress_bar <- function(i, total_iterations, start_time, bar_width = 30) {
   
@@ -49,16 +48,19 @@ progress_bar <- function(i, total_iterations, start_time, bar_width = 30) {
 
 
 
+
 # Carregando os pacotes ---------------------------------------------------
 library(rgbif)
 library(dplyr)
 library(readr)
-
+devtools::load_all("../splink/")
+api_key <- Sys.getenv("splink_api_key")
 
 # Lista de espécies -------------------------------------------------------
 
-spp_list <- read_csv("dados/tabelas/spp_chafariz_consolidada.csv", show_col_types = FALSE)
-spp <- spp_list$Espécie %>% unique()
+spp_list <- read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE)
+spp <- spp_list$`Nome válido` %>% unique()
+spp
 
 # Colunas desejadas (para garantir sempre o mesmo esquema)
 cols_to_keep <- c(
@@ -132,8 +134,50 @@ for (i in seq_along(spp)) {
     paste0("dados/tabelas/gbif/ocorrencias_", sp, "_gbif.csv"),
     row.names = FALSE
   )
+  
+  
+  resultados <- get_data(
+    list_data = list(
+      scientificName = sp,
+      limit = 50000,
+      synonyms       = c("dsmz", "moure", "flora2020", "gbif")
+    ),
+    apikey = api_key
+  )
+  
+  resultados
+  
+  write_csv(resultados, 
+            paste0("dados/tabelas/splink/ocorrencias_", sp, "_splink.csv"))
+  
+  
 }
 
 gbif_files <- list.files("dados/tabelas/gbif/", pattern = "csv$", full.names = T)
 occ_raw_gbif <- lapply(gbif_files, read_csv, show_col_types = FALSE) %>% bind_rows()
 write_csv(occ_raw_gbif, "dados/tabelas/ocorrencias_gbif.csv")
+
+splink_files <- list.files("dados/tabelas/splink/", pattern = "csv$", full.names = T)
+occ_raw_splink <- lapply(splink_files, read_csv, show_col_types = FALSE) %>% bind_rows()
+write_csv(occ_raw_splink, "dados/tabelas/ocorrencias_splink.csv")
+
+
+#--------------------------------
+
+
+# 
+# resultados <- get_data(
+#   list_data = list(
+#     scientificName = spp,
+#     limit = 50000,
+#     synonyms       = c("dsmz", "moure", "flora2020", "gbif")
+#   ),
+#   apikey = api_key
+# )
+# 
+# resultados
+# 
+# write_csv(resultados, "dados/tabelas/ocorrencias_splink.csv")
+# 
+# # Contando o numero de registros
+# dplyr::count(resultados, scientificname, .drop = FALSE)

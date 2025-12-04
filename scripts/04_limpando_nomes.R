@@ -10,6 +10,8 @@ occ_all <- read_csv("dados/tabelas/ocorrencias_brutas_todas.csv")
 occ_all <- occ_all %>%
   mutate(species = str_trim(species))
 
+#occ_all$species %>% unique() %>% sort() %>% as_tibble() %>% rename(original=value) %>% write_csv("dados/tabelas/sinonimos_species.csv")
+
 # Lê a tabela de sinônimos/simplificações de nomes de espécies.
 # Essa tabela deve ter, no mínimo, as colunas:
 #   - original: como o nome aparece em occ_all$species
@@ -36,7 +38,10 @@ occ_all <- occ_all %>%
   mutate(
     species = dplyr::coalesce(aceito, species)  # se tiver sinônimo, usa; senão mantém
   ) %>%
+  filter(aceito != 'remover') %>% 
   select(-aceito)  # remove a coluna auxiliar, já incorporada em species
+
+
 
 # Checa a lista final de nomes de espécies consolidados
 sort(unique(occ_all$species))

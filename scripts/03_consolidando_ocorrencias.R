@@ -5,13 +5,16 @@ library(readxl)
 
 # Importando os pontos de ocorrência --------------------------------------
 occ_raw_splink <- read_excel(
-  "dados/tabelas/speciesLink-20251201154658-0010982_occ_all_selected_species.xlsx"
+  "dados/tabelas/old/speciesLink-20251203135844-0011066.xlsx"
 )
 
 occ_raw_gbif <- read_csv(
   "dados/tabelas/ocorrencias_gbif.csv",
   show_col_types = FALSE  # silencia mensagens do readr
 )
+
+occ_raw_gbif$institutionCode %>% table %>% sort(d=T) %>% head(20)
+occ_raw_gbif <- occ_raw_gbif %>% filter(!institutionCode %in% "iNaturalist")
 
 # Conferência rápida (opcional) -------------------------------------------
 # occ_raw_splink # scientificname = nome da espécie sem autor
@@ -34,19 +37,15 @@ occ_splink_std <- occ_raw_splink %>%
     stateprovince        = stateprovince,
     institutioncode      = institutioncode,
     collectioncode       = collectioncode,
-    catalognumber        = catalognumber,
     kingdom              = kingdom,
     phylum               = phylum,
-    class                = taxonclass,
     order                = ordem,
     family               = family,
     genus                = genus,
     # species canônico: nome da espécie SEM autor (vai casar com GBIF$species)
     species              = species_no_author,
-    typestatus           = typestatus,
     year                 = as.integer(yearcollected),
     month                = NA_integer_,
-    collector            = collector,
     decimallongitude     = as.numeric(longitude),
     decimallatitude      = as.numeric(latitude)
   )
@@ -64,16 +63,13 @@ occ_gbif_std <- occ_raw_gbif %>%
     stateprovince        = stateProvince,
     institutioncode      = institutionCode,
     collectioncode       = collectionCode,
-    catalognumber        = NA_character_,
     kingdom              = kingdom,
     phylum               = phylum,
-    class                = NA_character_,
     order                = order,
     family               = family,
     genus                = genus,
     # species: já é o nome SEM autor, compatível com speciesLink
     species              = species,
-    typestatus           = NA_character_,
     year                 = as.integer(year),
     month                = as.integer(month),
     collector            = identifiedBy,
