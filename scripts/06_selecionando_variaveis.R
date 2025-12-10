@@ -41,7 +41,7 @@ from <- lista_fit[str_detect(lista_fit, s)]
 to <- file.path("dados/raster/bioclimaticas/brasil_sel/", basename(from))
 file.copy(from, to)
 
-from <- lista_fit[str_detect(lista_proj, s)]
+from <- lista_proj[str_detect(lista_proj, s)]
 to <- file.path("dados/raster/bioclimaticas/caatinga_sel/", basename(from))
 file.copy(from, to)
 
