@@ -15,16 +15,22 @@ occ_raw
 # Seleciona as colunas de interesse
 occ_coord <- 
   occ_raw %>% 
-    select(species, decimallongitude, decimallatitude) %>% 
+    dplyr::select(species, decimallongitude, decimallatitude) %>% 
     filter(!is.na(decimallongitude))
 
 # Checando os dados de ocorrencia
-occ_clean <- clean_coordinates(occ_coord, 
-                               species = "species",
-                               lon = 'decimallongitude',
-                               lat = 'decimallatitude',
-                               tests = c("equal", "outliers", "zeros", 'dupl'),
-                               value = "clean")
+occ_clean <- cc_val(
+  x    = occ_coord,
+  lon  = "decimallongitude",
+  lat  = "decimallatitude",
+  value   = "clean",
+  verbose = TRUE) %>% 
+  clean_coordinates(species = "species",
+                    lon = 'decimallongitude',
+                    lat = 'decimallatitude',
+                    tests = c("equal", "outliers", "zeros"),
+                    value = "clean") %>% 
+  distinct()
 
 # Número de ocorrências únicas
 nrow(occ_coord)
@@ -46,6 +52,7 @@ for (sp in unique(occ_clean$species)) {
        out.base  = paste0(sp, "_thinned"),
        write.log.file = FALSE)
 }
+
 occ_thin <- list.files("dados/tabelas/occ_thin/", full.names = T, pattern = "csv$") %>% 
   lapply(read_csv, show_col_types = FALSE) %>% bind_rows() %>% as.data.frame()
 
@@ -59,6 +66,7 @@ occ_modelagem <- occ_thin[!is.na(extract(var1, occ_thin[,-1])),]
 
 # Número de ocorrências dentro do raster, com valores ambientais associados
 # Número de ocorrências únicas por pixel, com valores e sem inconcistencias
+nrow(occ_thin)
 nrow(occ_modelagem)
 
 # Salvando no disco

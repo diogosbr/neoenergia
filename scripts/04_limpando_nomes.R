@@ -3,14 +3,14 @@ library(dplyr)
 library(stringr)
 
 # Lê a tabela consolidada de ocorrências (já com speciesLink + GBIF padronizados)
-occ_all <- read_csv("dados/tabelas/ocorrencias_brutas_todas.csv")
+occ_all <- read_csv("dados/tabelas/ocorrencias_brutas_todas_nodup.csv")
 
 # Dá uma “limpada” básica em species:
 # - remove espaços em branco no início/fim
 occ_all <- occ_all %>%
   mutate(species = str_trim(species))
 
-#occ_all$species %>% unique() %>% sort() %>% as_tibble() %>% rename(original=value) %>% write_csv("dados/tabelas/sinonimos_species.csv")
+#occ_all$species %>% unique() %>% sort() %>% as_tibble() %>% rename(original=value) %>% write_csv("dados/tabelas/sinonimos_species_01.csv")
 
 # Lê a tabela de sinônimos/simplificações de nomes de espécies.
 # Essa tabela deve ter, no mínimo, as colunas:
@@ -40,8 +40,6 @@ occ_all <- occ_all %>%
   ) %>%
   filter(aceito != 'remover') %>% 
   select(-aceito)  # remove a coluna auxiliar, já incorporada em species
-
-
 
 # Checa a lista final de nomes de espécies consolidados
 sort(unique(occ_all$species))

@@ -4,8 +4,8 @@ library(dplyr)
 library(readxl)
 
 # Importando os pontos de ocorrência --------------------------------------
-occ_raw_splink <- read_excel(
-  "dados/tabelas/old/speciesLink-20251203135844-0011066.xlsx"
+occ_raw_splink <- read_csv(
+  "dados/tabelas/ocorrencias_splink.csv"
 )
 
 occ_raw_gbif <- read_csv(
@@ -39,15 +39,15 @@ occ_splink_std <- occ_raw_splink %>%
     collectioncode       = collectioncode,
     kingdom              = kingdom,
     phylum               = phylum,
-    order                = ordem,
+    order                = NA,
     family               = family,
     genus                = genus,
     # species canônico: nome da espécie SEM autor (vai casar com GBIF$species)
     species              = species_no_author,
     year                 = as.integer(yearcollected),
     month                = NA_integer_,
-    decimallongitude     = as.numeric(longitude),
-    decimallatitude      = as.numeric(latitude)
+    decimallongitude     = as.numeric(decimallongitude),
+    decimallatitude      = as.numeric(decimallatitude)
   )
 
 # 2. Padroniza GBIF -------------------------------------------------------

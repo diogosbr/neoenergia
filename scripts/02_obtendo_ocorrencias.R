@@ -181,7 +181,7 @@ for (i in seq_along(spp)) {
     occ_search(
       scientificName = sp,
       hasCoordinate  = TRUE,
-      limit          = gbif_limit
+      limit          = 20
     ),
     error = function(e) {
       warning(sprintf("Erro em occ_search() para '%s': %s", sp, conditionMessage(e)))
@@ -294,7 +294,13 @@ splink_files <- list.files(
 
 if (length(splink_files) > 0) {
   occ_raw_splink <- splink_files %>%
-    lapply(read_csv, show_col_types = FALSE) %>%
+    lapply(function(f) {
+      read_csv(
+        file           = f,
+        col_types      = cols(.default = col_character()),
+        show_col_types = FALSE
+      )
+    }) %>%
     bind_rows()
   
   write_csv(occ_raw_splink, "dados/tabelas/ocorrencias_splink.csv")
