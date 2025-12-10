@@ -3,6 +3,7 @@ library(terra)
 library(readr)
 library(dplyr)
 library(usdm)
+library(stringr)
 
 # Listando os arquivos
 lista_proj <- list.files("dados/raster/bioclimaticas/caatinga/", full.names = T)
