@@ -80,6 +80,25 @@ occ_gbif_std <- occ_raw_gbif %>%
 # 3. Empilha tudo em uma tabela única -------------------------------------
 occ_all <- bind_rows(occ_splink_std, occ_gbif_std)
 
+
+# Importando os pontos de ocorrência --------------------------------------
+occ_new_raw <- read_csv(
+  "dados/tabelas/Espécies Modelagem BEI.xlsx - Occs_novas_Chafariz.csv",
+  locale = locale(decimal_mark = ",", grouping_mark = " "),
+  col_types = cols(
+    latitude = col_double(),
+    longitude = col_double(),
+    .default = col_guess()
+  )
+) %>% 
+  select(Especie, Grupo, `Unidade do registro`, latitude, longitude, Unidade, Lat, Long) %>% 
+  rename("species" = "Especie", 
+         "decimallongitude" = "longitude",
+         "decimallatitude" = "latitude") %>% 
+  mutate(source = "tabelas")
+
+occ_all <- bind_rows(occ_all, occ_new_raw)
+
 write_csv(occ_all, "dados/tabelas/ocorrencias_brutas_todas.csv")
 
 # 4. Remover duplicatas (mesmo ponto presente nas duas fontes) ------------
