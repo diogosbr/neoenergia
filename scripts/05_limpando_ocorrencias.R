@@ -59,7 +59,7 @@ occ_thin <- list.files("dados/tabelas/occ_thin/", full.names = T, pattern = "csv
 write_csv(occ_thin, "dados/tabelas/ocorrencias_thin.csv")
 
 # Importando uma variável preditora
-var1 <- raster('dados/raster/raster_base_1km_wgs84.tif')
+var1 <- raster('dados/raster/bioclimaticas/brasil_sel/bio_02.tif')
 
 # Removendo dados com 'NA'
 occ_modelagem <- occ_thin[!is.na(extract(var1, occ_thin[,-1])),]

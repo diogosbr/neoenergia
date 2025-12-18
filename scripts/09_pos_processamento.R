@@ -10,10 +10,10 @@ bho_nv5 <- vect("sig/Shapes/geoft_bho_ach_otto_nivel_05.gpkg")
 
 # Bacia nivel 4
 chafariz_buffer <- vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") %>% 
-  project(riqueza_bin, "EPSG:4674")
+  project("EPSG:4674")
 
 chafariz_pts <- vect("sig/Shapes/01. CHAFARIZ/prj_Aerogeradores_pt_CHAFARIZ.shp") %>% 
-  project(riqueza_bin, "EPSG:4674")
+  project("EPSG:4674")
 
 # Bacias que contem chafariz
 bho_chafariz <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c(75622, 75646, 75624, 75628, 75848),]
@@ -23,12 +23,24 @@ rm(bho_nv5)
 spp_list <- 
   read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
   filter(Chafariz == "x") %>% select(`Nome válido`) %>% distinct() %>% pull()
-  
+
+# com os 4 algoritmos  
+# lista_geral <- list.files("resultados/chafariz/v03/", recursive = TRUE, full.names = TRUE)
+# 
+# lista_ensemble_bin <- lista_geral[grepl("models_ensemble/caatinga/bin_", lista_geral)]
+# 
+# lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
+
+# só RF
 lista_geral <- list.files("resultados/chafariz/v03/", recursive = TRUE, full.names = TRUE)
 
 lista_ensemble_bin <- lista_geral[grepl("models_ensemble/caatinga/bin_", lista_geral)]
 
 lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
+
+# sem bioblim
+# lista_ensemble_bin <- list.files("resultados/chafariz/ensemble_v03/bin//", recursive = TRUE, full.names = TRUE)
+# lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
 
 riqueza_bin <- rast(lista_ensemble_bin) |> sum()
 riqueza_bin <- project(riqueza_bin, "EPSG:4674")
@@ -68,5 +80,6 @@ dev.off()
 boxplot(riqueza_buffer[])
 summary(riqueza_buffer[])
 hist(riqueza_buffer[], freq=T)
-hist(riqueza_buffer[], freq=F)
 
+writeRaster(riqueza_bho_nv5, "resultados/riqueza_bho.tif")
+writeRaster(riqueza_buffer, "resultados/riqueza_buffer.tif")

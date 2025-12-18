@@ -16,26 +16,38 @@ eval_list <- paste0(output, spp, '/models_ensemble/evaluate_', spp, ".csv") %>%
 
 write_csv(eval_list, paste0(output,"evaluate_all_species.csv"))
 
-boxplot(desempenho$auc ~ desempenho$algorithm)
-boxplot(desempenho$TSSmax ~ desempenho$algorithm)
-boxplot(desempenho$sensitivity ~ desempenho$algorithm)
-boxplot(desempenho$specificity ~ desempenho$algorithm)
-boxplot(desempenho$accuracy ~ desempenho$algorithm)
-boxplot(desempenho$comission ~ desempenho$algorithm)
-boxplot(desempenho$omission ~ desempenho$algorithm)
+boxplot(eval_list$auc ~ eval_list$algorithm)
+boxplot(eval_list$TSSmax ~ eval_list$algorithm)
+boxplot(eval_list$sensitivity ~ eval_list$algorithm)
+boxplot(eval_list$specificity ~ eval_list$algorithm)
+boxplot(eval_list$accuracy ~ eval_list$algorithm)
+boxplot(eval_list$comission ~ eval_list$algorithm)
+boxplot(eval_list$omission ~ eval_list$algorithm)
 
-desempenho %>% 
+eval_list %>% 
   group_by(algorithm) %>% 
   summarise(
-    min = mean(sensitivity),
+    min = min(sensitivity),
     mean = mean(sensitivity),
-    median = mean(sensitivity),
-    max = mean(sensitivity))
+    median = median(sensitivity),
+    max = max(sensitivity),
+    sd = sd(sensitivity))
 
-desempenho %>% 
+eval_list %>% 
   group_by(algorithm) %>% 
   summarise(
-    min = mean(specificity),
+    min = min(specificity),
     mean = mean(specificity),
-    median = mean(specificity),
-    max = mean(specificity))
+    median = median(specificity),
+    max = max(specificity),
+    sd = sd(specificity))
+
+
+eval_list %>%
+  group_by(algorithm, partiton, species) %>%
+  summarise(
+    sens = sensitivity,
+    spec = specificity,
+    .groups = "drop"
+  ) %>%
+  arrange(spec)

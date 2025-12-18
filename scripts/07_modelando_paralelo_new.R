@@ -7,7 +7,7 @@ library(parallel)
 library(purrr)
 
 # Caminho base para salvar resultados ----
-output <- "resultados/chafariz/v03"
+output <- "resultados/chafariz/v04"
 
 # Ocorrências ----
 occ_all <- read_csv("dados/tabelas/ocorrencias_modelagem.csv")
@@ -111,7 +111,7 @@ modelar_especie <- function(sp,
       env_data          = sdm_data,
       species_name      = sp,
       env_rasters       = predictors_fit,                  # Brasil
-      algorithms        = c("bioclim", "maxent", "randomforest", "svm"),
+      algorithms        = c("maxent", "randomforest", "svm"),
       partitions        = 5,
       project           = TRUE,
       env_rasters_proj  = list(caatinga = predictors_proj),# Caatinga
@@ -181,7 +181,7 @@ modelar_especie <- function(sp,
 #--------------------------------------------------------------------
 # Paralelização com mclapply
 #--------------------------------------------------------------------
-n_cores <- 8
+n_cores <- 4
 
 resultado_list <- mclapply(
   X        = spp,
@@ -196,3 +196,7 @@ resultado_list <- mclapply(
 # Consolida o resultado em uma tabela
 resultado <- dplyr::bind_rows(resultado_list)
 print(resultado)
+
+write_csv(
+  resultado,
+  file.path(output, "resultado.csv"))
