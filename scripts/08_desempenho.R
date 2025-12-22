@@ -1,7 +1,7 @@
 library(readr)
 library(dplyr)
 
-output <- "resultados/chafariz/v03//"
+output <- "resultados/chafariz/v06//"
 
 # Ocorrências ----
 occ_all <- read_csv("dados/tabelas/ocorrencias_modelagem.csv")

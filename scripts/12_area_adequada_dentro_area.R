@@ -1,7 +1,7 @@
 library(terra)
 library(dplyr)
 
-dir_bin <- "resultados/chafariz/ensemble_v03/bin/"  # 1 raster binário por espécie (0/1)
+dir_bin <- "resultados/chafariz/ensemble_v06/bin/"  # 1 raster binário por espécie (0/1)
 area_aoi <- vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") |> project("EPSG:5880") %>% aggregate()
 
 target_crs <- "EPSG:5880"
@@ -54,6 +54,8 @@ out_a <- lapply(files, function(f){
 
 
 out_a %>% arrange(desc(share_suitable)) %>% mutate(share_suitable = share_suitable * 100)
+# out_a %>% arrange(desc(share_suitable)) %>% mutate(share_suitable = share_suitable * 100) %>% 
+#   write_csv("resultados/chafariz/v06/area_in.csv")
 
 # 
 # # área total da AOI (km²)

@@ -22,12 +22,23 @@ spp_list <- read_csv(
 # Listar rasters e filtrar pelos ensembles binários
 # -------------------------------------------------------------------
 
-lista_ensemble_bin <- list.files("resultados/chafariz/ensemble_v03/bin//", recursive = TRUE, full.names = TRUE)
+# lista_ensemble_bin <- list.files("resultados/chafariz/ensemble_v03/bin//", recursive = TRUE, full.names = TRUE)
+# 
+# # Observação: mantém seu padrão de filtro via regex com paste(collapse="|")
+# lista_ensemble_bin <- lista_ensemble_bin[
+#   grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)
+# ]
 
-# Observação: mantém seu padrão de filtro via regex com paste(collapse="|")
-lista_ensemble_bin <- lista_ensemble_bin[
-  grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)
-]
+spp_list <- 
+  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
+  filter(Chafariz == "x") %>% select(`Nome válido`) %>% distinct() %>% pull()
+
+lista_geral <- list.files("resultados/chafariz/v06/", recursive = TRUE, full.names = TRUE)
+
+lista_ensemble_bin <- lista_geral[grepl("models_ensemble/caatinga/bin_", lista_geral)]
+
+lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
+
 
 # -------------------------------------------------------------------
 # Ocorrências

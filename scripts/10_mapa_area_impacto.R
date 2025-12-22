@@ -1,15 +1,29 @@
 library(dplyr)
 library(terra)
+library(tidyterra)
 library(sf)
 library(tmap)
 library(grid)
 
 tmap_mode("plot")
 
-lista_geral <- list.files("resultados/chafariz/v03/", recursive = TRUE, full.names = TRUE)
+spp_list <- 
+  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
+  filter(Chafariz == "x", grepl(pattern = "Endêmica", Endêmica)) %>% select(`Nome válido`) %>% distinct() %>% pull()
+
+lista_geral <- list.files("resultados/chafariz/v06/", recursive = TRUE, full.names = TRUE)
 
 lista_ensemble_bin <- lista_geral[grepl("models_ensemble/caatinga/bin_", lista_geral)]
+
+lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
+
 lista_ensemble_raw <- lista_geral[grepl("models_ensemble/caatinga/raw_", lista_geral)]
+
+lista_ensemble_raw <- lista_ensemble_raw[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_raw)]
+
+
+
+
 
 riqueza_bin <- rast(lista_ensemble_bin) |> sum()
 riqueza_bin <- project(riqueza_bin, "EPSG:4674")
@@ -61,7 +75,7 @@ cols <- c(
 pal <- grDevices::colorRampPalette(cols)
 breaks <- c(0, 1, 2, 4, 7, 11, 16, 21, 31, 41, 51, 66)
 
-mapa_area_impacto <- tm_shape(riqueza_bin, bbox = area_impacto_bbox_expandida) +
+mapa_area_impacto <- tm_shape(qg, bbox = area_impacto_bbox_expandida) +
   tm_raster(
     style   = "fixed",
     breaks  = breaks,

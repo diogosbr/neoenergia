@@ -32,7 +32,7 @@ spp_list <-
 # lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
 
 # só RF
-lista_geral <- list.files("resultados/chafariz/v03/", recursive = TRUE, full.names = TRUE)
+lista_geral <- list.files("resultados/chafariz/v06/", recursive = TRUE, full.names = TRUE)
 
 lista_ensemble_bin <- lista_geral[grepl("models_ensemble/caatinga/bin_", lista_geral)]
 
@@ -76,10 +76,47 @@ plot(bho_chafariz, add = T, pch = 16, cex = 0.6)
 plot(buffer_impacto, add = T, border = "red", lwd = 2)
 dev.off()
 
+png("plots/mapa_riqueza_caatinha.png", width = 2000, height = 1500, res = 300)
+plot(riqueza_bin, col = pal(20))
+plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
+plot(bho_chafariz, add = T, pch = 16, cex = 0.6)
+plot(buffer_impacto, add = T, border = "red", lwd = 2)
+dev.off()
+
 
 boxplot(riqueza_buffer[])
 summary(riqueza_buffer[])
 hist(riqueza_buffer[], freq=T)
 
-writeRaster(riqueza_bho_nv5, "resultados/riqueza_bho.tif")
-writeRaster(riqueza_buffer, "resultados/riqueza_buffer.tif")
+writeRaster(riqueza_bin, "resultados/riqueza_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_bho_nv5, "resultados/riqueza_bho.tif", overwrite = TRUE)
+writeRaster(riqueza_buffer, "resultados/riqueza_buffer.tif", overwrite = TRUE)
+
+
+#---------------------------------#
+
+library(terra)
+
+riqueza_bin <- rast("resultados/riqueza_caatinga.tif")
+riqueza_bho_nv5 <- rast("resultados/riqueza_bho.tif")
+riqueza_buffer <- rast("resultados/riqueza_buffer.tif")
+
+
+s_caat <- riqueza_bin %>% values(mat=F, na.rm = T) %>% table()
+s_bho <- riqueza_bho_nv5 %>% values(mat=F, na.rm = T) %>% table()
+s_buffer <- riqueza_buffer %>% values(mat=F, na.rm = T) %>% table()
+
+plot(s_caat)
+plot(s_bho)
+plot(s_buffer)
+
+
+riqueza_bin %>% values(mat=F, na.rm = T) %>% summary()
+riqueza_bho_nv5 %>% values(mat=F, na.rm = T) %>% summary()
+riqueza_buffer %>% values(mat=F, na.rm = T) %>% summary()
+
+
+
+
+
+
