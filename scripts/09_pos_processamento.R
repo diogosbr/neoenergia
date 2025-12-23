@@ -20,9 +20,25 @@ bho_chafariz <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c(75622, 75646, 756
 
 rm(bho_nv5)
 
+# Tudo
 spp_list <- 
   read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
   filter(Chafariz == "x") %>% select(`Nome válido`) %>% distinct() %>% pull()
+
+# endemica
+spp_list <- 
+  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
+  filter(Chafariz == "x", grepl("Endêmica.*", .$Endêmica)) %>% select(`Nome válido`) %>% distinct() %>% pull()
+
+# ameaçada
+spp_list <- 
+  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
+  filter(Chafariz == "x", grepl("VU|EN", .$`Grau de proteção`)) %>% select(`Nome válido`) %>% distinct() %>% pull()
+  
+# migratória
+spp_list <- 
+  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
+  filter(Chafariz == "x", grepl("igratória.*", .$Migratória)) %>% select(`Nome válido`) %>% distinct() %>% pull()
 
 # com os 4 algoritmos  
 # lista_geral <- list.files("resultados/chafariz/v03/", recursive = TRUE, full.names = TRUE)
@@ -76,7 +92,7 @@ plot(bho_chafariz, add = T, pch = 16, cex = 0.6)
 plot(buffer_impacto, add = T, border = "red", lwd = 2)
 dev.off()
 
-png("plots/mapa_riqueza_caatinha.png", width = 2000, height = 1500, res = 300)
+png("plots/mapa_riqueza_caatinga.png", width = 2000, height = 1500, res = 300)
 plot(riqueza_bin, col = pal(20))
 plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
 plot(bho_chafariz, add = T, pch = 16, cex = 0.6)
@@ -92,6 +108,55 @@ writeRaster(riqueza_bin, "resultados/riqueza_caatinga.tif", overwrite = TRUE)
 writeRaster(riqueza_bho_nv5, "resultados/riqueza_bho.tif", overwrite = TRUE)
 writeRaster(riqueza_buffer, "resultados/riqueza_buffer.tif", overwrite = TRUE)
 
+png("plots/riqueza_buffer_endemicas.png", width = 2000, height = 1500, res = 300)
+plot(riqueza_buffer, col = pal(20))
+plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
+plot(buffer_impacto, add = T, border = "red", lwd = 2)
+dev.off()
+
+writeRaster(riqueza_buffer, "resultados/riqueza_buffer_endemicas.tif", overwrite = TRUE)
+
+png("plots/riqueza_buffer_ameacadas.png", width = 2000, height = 1500, res = 300)
+plot(riqueza_buffer, col = pal(20))
+plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
+plot(buffer_impacto, add = T, border = "red", lwd = 2)
+dev.off()
+
+writeRaster(riqueza_buffer, "resultados/riqueza_buffer_ameacadas.tif", overwrite = TRUE)
+
+png("plots/riqueza_buffer_migratorias.png", width = 2000, height = 1500, res = 300)
+plot(riqueza_buffer, col = pal(20))
+plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
+plot(buffer_impacto, add = T, border = "red", lwd = 2)
+dev.off()
+
+writeRaster(riqueza_buffer, "resultados/riqueza_buffer_migratorias.tif", overwrite = TRUE)
+
+
+
+png("plots/riqueza_caat_endemicas.png", width = 2000, height = 1500, res = 300)
+plot(riqueza_bin, col = pal(20))
+plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
+plot(buffer_impacto, add = T, border = "red", lwd = 2)
+dev.off()
+
+writeRaster(riqueza_bin, "resultados/riqueza_caat_endemicas.tif", overwrite = TRUE)
+
+png("plots/riqueza_caat_ameacadas.png", width = 2000, height = 1500, res = 300)
+plot(riqueza_bin, col = pal(20))
+plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
+plot(buffer_impacto, add = T, border = "red", lwd = 2)
+dev.off()
+
+writeRaster(riqueza_bin, "resultados/riqueza_caat_ameacadas.tif", overwrite = TRUE)
+
+png("plots/riqueza_caat_migratorias.png", width = 2000, height = 1500, res = 300)
+plot(riqueza_bin, col = pal(20))
+plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
+plot(buffer_impacto, add = T, border = "red", lwd = 2)
+dev.off()
+
+writeRaster(riqueza_bin, "resultados/riqueza_caat_migratorias.tif", overwrite = TRUE)
 
 #---------------------------------#
 
