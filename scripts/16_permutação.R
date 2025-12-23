@@ -17,9 +17,18 @@ dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 # ============================================================
 # 1) LEITURA DOS RASTERS
 # ============================================================
-riqueza_caat   <- rast("resultados/riqueza_caatinga.tif")
-riqueza_bho    <- rast("resultados/riqueza_bho.tif")
-riqueza_buffer <- rast("resultados/riqueza_buffer.tif")
+# riqueza_caat   <- rast("resultados/riqueza_caatinga.tif")
+# riqueza_bho    <- rast("resultados/riqueza_bho.tif")
+# riqueza_buffer <- rast("resultados/riqueza_buffer.tif")
+
+riqueza_caat   <- rast("resultados/riqueza_caat_ameacadas.tif")
+riqueza_buffer <- rast("resultados/riqueza_buffer_ameacadas.tif")
+
+riqueza_caat   <- rast("resultados/riqueza_caat_endemicas.tif")
+riqueza_buffer <- rast("resultados/riqueza_buffer_endemicas.tif")
+
+riqueza_caat   <- rast("resultados/riqueza_caat_")
+riqueza_buffer <- rast("resultados/riqueza_buffer_migratorias.tif")
 
 # # Checagem conservadora: exige mesma geometria (evita comparação incorreta)
 # if (!compareGeom(riqueza_caat, riqueza_bho, stopOnError = FALSE)) {
@@ -117,6 +126,7 @@ enrichment_test <- function(v_sub, v_ref, q = 0.95, n_perm = 9999, seed = 1) {
 # ============================================================
 res_bho_mean <- perm_test(v_bho, v_caat, stat = mean,   n_perm = n_perm, seed = 10)
 res_buf_mean <- perm_test(v_buf, v_caat, stat = mean,   n_perm = n_perm, seed = 11)
+res_buf_bho_mean <- perm_test(v_buf, v_bho, stat = mean,   n_perm = n_perm, seed = 11)
 
 res_bho_med  <- perm_test(v_bho, v_caat, stat = median, n_perm = n_perm, seed = 12)
 res_buf_med  <- perm_test(v_buf, v_caat, stat = median, n_perm = n_perm, seed = 13)
@@ -136,6 +146,13 @@ abline(v = res_buf_med$obs, lwd = 2)
 
 par(mfrow = c(1,3))
 hist(v_caat, breaks = 50, main = "Caatinga (pixel)", xlab = "Riqueza potencial")
+
+abline(v = min(v_buf), lwd = 2, col = 'red')
+abline(v = max(v_buf), lwd = 2, col = 'red')
+
+# abline(v = min(v_bho), lwd = 2, col = 'blue')
+# abline(v = max(v_bho), lwd = 2, col = 'blue')
+
 hist(v_bho,  breaks = 50, main = "5 bacias (pixel)", xlab = "Riqueza potencial")
 hist(v_buf,  breaks = 50, main = "Buffer (pixel)",   xlab = "Riqueza potencial")
 par(mfrow = c(1,1))
