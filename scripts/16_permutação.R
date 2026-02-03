@@ -5,94 +5,61 @@ library(terra)
 # ============================================================
 n_perm <- 1e5
 q_top  <- 0.95
-
-# Versão conservadora (redução de autocorrelação): fator de agregação
-# (ex.: fact = 5 => blocos de 5x5 pixels)
 fact   <- 5
 
-# Saídas
-out_dir <- "resultados/testes_riqueza"
+base_dir <- "/home/smaug/home/diogo/Documentos/github/neoenergia/resultados"
+out_dir  <- file.path(base_dir, "testes_riqueza")
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # ============================================================
-# 1) LEITURA DOS RASTERS
+# 1) CHECAGEM GEOM (EXATAMENTE COMO VOCÊ PEDIU)
 # ============================================================
-# riqueza_caat   <- rast("resultados/riqueza_caatinga.tif")
-# riqueza_bho    <- rast("resultados/riqueza_bho.tif")
-# riqueza_buffer <- rast("resultados/riqueza_buffer.tif")
-
-riqueza_caat   <- rast("resultados/riqueza_caat_ameacadas.tif")
-riqueza_buffer <- rast("resultados/riqueza_buffer_ameacadas.tif")
-
-riqueza_caat   <- rast("resultados/riqueza_caat_endemicas.tif")
-riqueza_buffer <- rast("resultados/riqueza_buffer_endemicas.tif")
-
-riqueza_caat   <- rast("resultados/riqueza_caat_")
-riqueza_buffer <- rast("resultados/riqueza_buffer_migratorias.tif")
-
-# # Checagem conservadora: exige mesma geometria (evita comparação incorreta)
-# if (!compareGeom(riqueza_caat, riqueza_bho, stopOnError = FALSE)) {
-#   stop("Geometria diferente entre riqueza_caat e riqueza_bho (crs/res/extent/origem). Ajuste antes de seguir.")
-# }
-# if (!compareGeom(riqueza_caat, riqueza_buffer, stopOnError = FALSE)) {
-#   stop("Geometria diferente entre riqueza_caat e riqueza_buffer (crs/res/extent/origem). Ajuste antes de seguir.")
-# }
+assert_same_geom <- function(r_ref, r_sub, label) {
+  ok <- compareGeom(r_ref, r_sub, stopOnError = FALSE)
+  if (!isTRUE(ok)) warning(paste0("Geometria diferente entre referência e ", label,
+                                  " (crs/res/extent/origem). Corrija antes de seguir."))
+  invisible(TRUE)
+  return(NULL)
+}
 
 # ============================================================
-# 2) EXTRAÇÃO DOS VALORES (SEM NA)
+# 2) FUNÇÕES DE TESTE (CONSERVADORAS)
 # ============================================================
-v_caat <- values(riqueza_caat,   mat = FALSE, na.rm = TRUE)
-v_bho  <- values(riqueza_bho,    mat = FALSE, na.rm = TRUE)
-v_buf  <- values(riqueza_buffer, mat = FALSE, na.rm = TRUE)
-
-# Garantia de tipo numérico (conservador)
-v_caat <- as.numeric(v_caat)
-v_bho  <- as.numeric(v_bho)
-v_buf  <- as.numeric(v_buf)
-
-# Checagens rápidas
-summary(v_caat)
-summary(v_bho)
-summary(v_buf)
-
-# ============================================================
-# 3) FUNÇÕES DE TESTE
-# ============================================================
-perm_test <- function(v_sub, v_ref, stat = mean, n_perm = 9999, seed = 1) {
-  v_sub <- v_sub[!is.na(v_sub)]
-  v_ref <- v_ref[!is.na(v_ref)]
+perm_test <- function(v_sub, v_ref, stat = mean, n_perm = 9999, seed = 1, keep_null = FALSE) {
+  v_sub <- as.numeric(v_sub); v_sub <- v_sub[!is.na(v_sub)]
+  v_ref <- as.numeric(v_ref); v_ref <- v_ref[!is.na(v_ref)]
   
   n <- length(v_sub)
-  if (n == 0) stop("v_sub não tem valores (tudo NA ou vazio).")
-  if (n > length(v_ref)) stop("v_sub tem mais amostras do que v_ref; não dá para amostrar sem reposição.")
+  if (n == 0) stop("perm_test: v_sub não tem valores válidos (tudo NA ou vazio).")
+  if (n > length(v_ref)) stop("perm_test: v_sub tem mais amostras do que v_ref; não dá para amostrar sem reposição.")
   
   set.seed(seed)
   
-  obs <- stat(v_sub)
-  
+  obs  <- stat(v_sub)
   null <- replicate(n_perm, stat(sample(v_ref, n, replace = FALSE)))
   
   center <- mean(null)
   p <- (sum(abs(null - center) >= abs(obs - center)) + 1) / (n_perm + 1)
   
-  list(
+  out <- list(
     n_sub = n,
     obs = obs,
     null_mean = center,
     diff = obs - center,
-    diff_percent = 100 * (obs - center) / center,
-    p_value = p,
-    null = null
+    diff_percent = if (center == 0) NA_real_ else 100 * (obs - center) / center,
+    p_value = p
   )
+  if (keep_null) out$null <- null
+  out
 }
 
-enrichment_test <- function(v_sub, v_ref, q = 0.95, n_perm = 9999, seed = 1) {
-  v_sub <- v_sub[!is.na(v_sub)]
-  v_ref <- v_ref[!is.na(v_ref)]
+enrichment_test <- function(v_sub, v_ref, q = 0.95, n_perm = 9999, seed = 1, keep_null = FALSE) {
+  v_sub <- as.numeric(v_sub); v_sub <- v_sub[!is.na(v_sub)]
+  v_ref <- as.numeric(v_ref); v_ref <- v_ref[!is.na(v_ref)]
   
   n <- length(v_sub)
-  if (n == 0) stop("v_sub não tem valores (tudo NA ou vazio).")
-  if (n > length(v_ref)) stop("v_sub tem mais amostras do que v_ref; não dá para amostrar sem reposição.")
+  if (n == 0) stop("enrichment_test: v_sub não tem valores válidos (tudo NA ou vazio).")
+  if (n > length(v_ref)) stop("enrichment_test: v_sub tem mais amostras do que v_ref; não dá para amostrar sem reposição.")
   
   set.seed(seed)
   
@@ -104,11 +71,10 @@ enrichment_test <- function(v_sub, v_ref, q = 0.95, n_perm = 9999, seed = 1) {
   center <- mean(null)
   p <- (sum(abs(null - center) >= abs(obs - center)) + 1) / (n_perm + 1)
   
-  # diff_percent aqui é relativo ao null_prop (quando > 0)
   diff_val <- obs - center
   diff_pct <- if (center == 0) NA_real_ else 100 * diff_val / center
   
-  list(
+  out <- list(
     n_sub = n,
     quantile = q,
     threshold = thr,
@@ -116,86 +82,77 @@ enrichment_test <- function(v_sub, v_ref, q = 0.95, n_perm = 9999, seed = 1) {
     null_prop = center,
     diff = diff_val,
     diff_percent = diff_pct,
-    p_value = p,
-    null = null
+    p_value = p
+  )
+  if (keep_null) out$null <- null
+  out
+}
+
+# ============================================================
+# 3) UTILITÁRIOS
+# ============================================================
+safe_rast <- function(path) {
+  if (!file.exists(path)) stop(paste0("Arquivo não encontrado: ", path))
+  rast(path)
+}
+
+get_vals <- function(r) {
+  v <- values(r, mat = FALSE)
+  v <- as.numeric(v)
+  v[!is.na(v)]
+}
+
+# Checagem conservadora adequada ao seu caso:
+# - NÃO exige mesmo extent/nrow/ncol (buffer é recorte)
+# - EXIGE CRS, resolução e origem compatíveis (evita erro)
+is_compatible_sampling <- function(r_ref, r_obs, tol = 1e-9) {
+  ok_crs <- same.crs(r_ref, r_obs)
+  ok_res <- isTRUE(all.equal(res(r_ref), res(r_obs), tolerance = tol))
+  ok_org <- isTRUE(all.equal(origin(r_ref), origin(r_obs), tolerance = tol))
+  ok_crs && ok_res && ok_org
+}
+
+geom_brief <- function(r) {
+  list(
+    crs = crs(r),
+    res = res(r),
+    origin = origin(r),
+    ext = ext(r)
   )
 }
 
 # ============================================================
-# 4) TESTES (PIXEL) — MÉDIA E MEDIANA
+# 4) CENÁRIOS (APENAS OS QUE VOCÊ PEDIU)
 # ============================================================
-res_bho_mean <- perm_test(v_bho, v_caat, stat = mean,   n_perm = n_perm, seed = 10)
-res_buf_mean <- perm_test(v_buf, v_caat, stat = mean,   n_perm = n_perm, seed = 11)
-res_buf_bho_mean <- perm_test(v_buf, v_bho, stat = mean,   n_perm = n_perm, seed = 11)
-
-res_bho_med  <- perm_test(v_bho, v_caat, stat = median, n_perm = n_perm, seed = 12)
-res_buf_med  <- perm_test(v_buf, v_caat, stat = median, n_perm = n_perm, seed = 13)
-
-# ============================================================
-# 5) PLOTS DIAGNÓSTICOS (OPCIONAL)
-# ============================================================
-hist(res_buf_mean$null, breaks = 50, main = "Null - Buffer (média, pixel)",
-     xlab = "Estatística (média da riqueza)",
-     xlim = (range(res_buf_mean$null) + c(-1, +4)))
-abline(v = res_buf_mean$obs, lwd = 2)
-
-hist(res_buf_med$null, breaks = 50, main = "Null - Buffer (mediana, pixel)",
-     xlab = "Estatística (mediana da riqueza)",
-     xlim = (range(res_buf_med$null) + c(-1, +4)))
-abline(v = res_buf_med$obs, lwd = 2)
-
-par(mfrow = c(1,3))
-hist(v_caat, breaks = 50, main = "Caatinga (pixel)", xlab = "Riqueza potencial")
-
-abline(v = min(v_buf), lwd = 2, col = 'red')
-abline(v = max(v_buf), lwd = 2, col = 'red')
-
-# abline(v = min(v_bho), lwd = 2, col = 'blue')
-# abline(v = max(v_bho), lwd = 2, col = 'blue')
-
-hist(v_bho,  breaks = 50, main = "5 bacias (pixel)", xlab = "Riqueza potencial")
-hist(v_buf,  breaks = 50, main = "Buffer (pixel)",   xlab = "Riqueza potencial")
-par(mfrow = c(1,1))
+scenarios <- list(
+  list(id = "buffer_vs_bho__todas",            obs = "riqueza_buffer.tif",             ref = "riqueza_bho.tif"),
+  list(id = "buffer_vs_caatinga__todas",       obs = "riqueza_buffer.tif",             ref = "riqueza_caatinga.tif"),
+  
+  list(id = "buffer_vs_bho__endemicas",        obs = "riqueza_buffer_endemicas.tif",   ref = "riqueza_bho_endemicas.tif"),
+  list(id = "buffer_vs_caatinga__endemicas",   obs = "riqueza_buffer_endemicas.tif",   ref = "riqueza_caatinga_endemicas.tif"),
+  
+  list(id = "buffer_vs_bho__ameacadas",        obs = "riqueza_buffer_ameacadas.tif",   ref = "riqueza_bho_ameacadas.tif"),
+  list(id = "buffer_vs_caatinga__ameacadas",   obs = "riqueza_buffer_ameacadas.tif",   ref = "riqueza_caatinga_ameacadas.tif"),
+  
+  list(id = "buffer_vs_bho__migratorias",      obs = "riqueza_buffer_migratorias.tif", ref = "riqueza_bho_migratorias.tif"),
+  list(id = "buffer_vs_caatinga__migratorias", obs = "riqueza_buffer_migratorias.tif", ref = "riqueza_caatinga_migratorias.tif")
+)
 
 # ============================================================
-# 6) VERSÃO CONSERVADORA — AGREGAÇÃO EM BLOCOS (fact x fact)
+# 5) FORMATO DA TABELA E FUNÇÕES DE LINHA
 # ============================================================
-agg_caat <- aggregate(riqueza_caat,   fact = fact, fun = mean, na.rm = TRUE)
-agg_bho  <- aggregate(riqueza_bho,    fact = fact, fun = mean, na.rm = TRUE)
-agg_buf  <- aggregate(riqueza_buffer, fact = fact, fun = mean, na.rm = TRUE)
+expected_cols <- c(
+  "scenario", "scale", "test", "metric",
+  "quantile", "threshold", "obs_prop", "null_prop",
+  "n_sub", "obs", "null_mean", "diff", "diff_percent", "p_value"
+)
 
-va_caat <- values(agg_caat, mat = FALSE); va_caat <- va_caat[!is.na(va_caat)]
-va_bho  <- values(agg_bho,  mat = FALSE); va_bho  <- va_bho[!is.na(va_bho)]
-va_buf  <- values(agg_buf,  mat = FALSE); va_buf  <- va_buf[!is.na(va_buf)]
-
-va_caat <- as.numeric(va_caat)
-va_bho  <- as.numeric(va_bho)
-va_buf  <- as.numeric(va_buf)
-
-res_bho_mean_blk <- perm_test(va_bho, va_caat, stat = mean, n_perm = n_perm, seed = 20)
-res_buf_mean_blk <- perm_test(va_buf, va_caat, stat = mean, n_perm = n_perm, seed = 21)
-
-hist(res_buf_mean_blk$null, breaks = 50, main = paste0("Null - Buffer (média, blocos fact=", fact, ")"),
-     xlab = "Estatística (média da riqueza por bloco)",
-     xlim = (range(res_buf_mean_blk$null) + c(-1, +4)))
-abline(v = res_buf_mean_blk$obs, lwd = 2)
-
-# ============================================================
-# 7) ENRIQUECIMENTO NO TOPO (PIXEL) — q = 0.95 (ajustável)
-# ============================================================
-enr_bho <- enrichment_test(v_bho, v_caat, q = q_top, n_perm = n_perm, seed = 30)
-enr_buf <- enrichment_test(v_buf, v_caat, q = q_top, n_perm = n_perm, seed = 31)
-
-# ============================================================
-# 8) TABELA SÍNTESE (TUDO)
-#    Colunas pedidas:
-#    - quantile, threshold, obs_prop, null_prop, diff, p_value
-#    - n_sub, obs, null_mean, diff, diff_percent, p_value
-#    (unificadas em uma tabela; onde não se aplica fica NA)
-# ============================================================
-row_from_perm <- function(id, x) {
+row_perm <- function(scenario_id, scale, metric, x) {
   data.frame(
-    id = id,
+    scenario = scenario_id,
+    scale = scale,
+    test = "perm",
+    metric = metric,
     quantile = NA_real_,
     threshold = NA_real_,
     obs_prop = NA_real_,
@@ -210,9 +167,12 @@ row_from_perm <- function(id, x) {
   )
 }
 
-row_from_enr <- function(id, x) {
+row_enr <- function(scenario_id, scale, x) {
   data.frame(
-    id = id,
+    scenario = scenario_id,
+    scale = scale,
+    test = "enrichment",
+    metric = NA_character_,
     quantile = x$quantile,
     threshold = x$threshold,
     obs_prop = x$obs_prop,
@@ -227,41 +187,190 @@ row_from_enr <- function(id, x) {
   )
 }
 
-tab_sintese <- rbind(
-  row_from_perm("bho_mean_pixel",        res_bho_mean),
-  row_from_perm("buffer_mean_pixel",     res_buf_mean),
-  row_from_perm("bho_median_pixel",      res_bho_med),
-  row_from_perm("buffer_median_pixel",   res_buf_med),
-  row_from_perm(paste0("bho_mean_block_fact", fact),    res_bho_mean_blk),
-  row_from_perm(paste0("buffer_mean_block_fact", fact), res_buf_mean_blk),
-  row_from_enr(paste0("bho_enrich_q", q_top, "_pixel"),  enr_bho),
-  row_from_enr(paste0("buffer_enrich_q", q_top, "_pixel"), enr_buf)
+safe_rbind_tabs <- function(tabs, expected_cols) {
+  tabs2 <- tabs[!vapply(tabs, is.null, logical(1))]
+  
+  if (length(tabs2) == 0) {
+    out <- as.data.frame(matrix(nrow = 0, ncol = length(expected_cols)))
+    names(out) <- expected_cols
+    return(out)
+  }
+  
+  out <- do.call(rbind, tabs2)
+  
+  missing <- setdiff(expected_cols, names(out))
+  if (length(missing) > 0) {
+    for (m in missing) out[[m]] <- NA
+  }
+  
+  out <- out[, expected_cols, drop = FALSE]
+  out
+}
+
+# ============================================================
+# 6) FUNÇÃO PRINCIPAL (ESTAVA FALTANDO NO SEU SCRIPT)
+# ============================================================
+run_scenario <- function(sc, base_dir, out_dir, n_perm, q_top, fact, seed_base = 1000) {
+  obs_path <- file.path(base_dir, sc$obs)
+  ref_path <- file.path(base_dir, sc$ref)
+  
+  if (!file.exists(obs_path)) {
+    warning(paste0("[SKIP] Obs não existe: ", obs_path))
+    return(NULL)
+  }
+  if (!file.exists(ref_path)) {
+    warning(paste0("[SKIP] Ref não existe: ", ref_path))
+    return(NULL)
+  }
+  
+  message("Rodando: ", sc$id)
+  
+  r_obs <- rast(obs_path)
+  r_ref <- rast(ref_path)
+  
+  # Mantém o seu warning "completo"
+  assert_same_geom(r_ref, r_obs, label = sc$id)
+  
+  # Conservador do jeito certo: ignora extent, mas exige CRS/res/origin
+  if (!is_compatible_sampling(r_ref, r_obs)) {
+    warning(paste0(
+      "[SKIP] Incompatível para amostragem (CRS/res/origin) no cenário: ", sc$id, "\n",
+      "  REF: ", sc$ref, " | res=", paste(res(r_ref), collapse="x"),
+      " origin=", paste(origin(r_ref), collapse=", "), "\n",
+      "  OBS: ", sc$obs, " | res=", paste(res(r_obs), collapse="x"),
+      " origin=", paste(origin(r_obs), collapse=", ")
+    ))
+    return(NULL)
+  }
+  
+  v_ref <- get_vals(r_ref)
+  v_obs <- get_vals(r_obs)
+  
+  sid <- match(sc$id, vapply(scenarios, `[[`, character(1), "id"))
+  if (is.na(sid)) sid <- 1L
+  s0 <- seed_base + 100 * sid
+  
+  # ===== TESTES (PIXEL) =====
+  res_mean <- perm_test(v_obs, v_ref, stat = mean,   n_perm = n_perm, seed = s0 + 11, keep_null = TRUE)
+  res_med  <- perm_test(v_obs, v_ref, stat = median, n_perm = n_perm, seed = s0 + 13, keep_null = TRUE)
+  enr      <- enrichment_test(v_obs, v_ref, q = q_top, n_perm = n_perm, seed = s0 + 31, keep_null = TRUE)
+  
+  # ===== VERSÃO CONSERVADORA (BLOCOS) =====
+  agg_ref <- aggregate(r_ref, fact = fact, fun = mean, na.rm = TRUE)
+  agg_obs <- aggregate(r_obs, fact = fact, fun = mean, na.rm = TRUE)
+  
+  assert_same_geom(agg_ref, agg_obs, label = paste0(sc$id, "__blocks"))
+  
+  res_blk <- NULL
+  if (is_compatible_sampling(agg_ref, agg_obs)) {
+    va_ref <- get_vals(agg_ref)
+    va_obs <- get_vals(agg_obs)
+    res_blk <- perm_test(va_obs, va_ref, stat = mean, n_perm = n_perm, seed = s0 + 21, keep_null = TRUE)
+  } else {
+    warning(paste0("[SKIP-BLOCK] Incompatível (CRS/res/origin) após agregação: ", sc$id))
+  }
+  
+  # ===== GRÁFICOS (1 PDF por cenário) =====
+  plot_file <- file.path(out_dir, paste0("diagnosticos__", sc$id, ".pdf"))
+  pdf(plot_file, width = 10, height = 8)
+  
+  hist(res_mean$null, breaks = 50,
+       main = paste0("Null (perm) — ", sc$id, " — média (pixel)"),
+       xlab = "Estatística (média da riqueza)")
+  abline(v = res_mean$obs, lwd = 2)
+  
+  hist(res_med$null, breaks = 50,
+       main = paste0("Null (perm) — ", sc$id, " — mediana (pixel)"),
+       xlab = "Estatística (mediana da riqueza)")
+  abline(v = res_med$obs, lwd = 2)
+  
+  par(mfrow = c(1, 2))
+  hist(v_ref, breaks = 50, main = paste0("Referência — ", basename(sc$ref)), xlab = "Riqueza (pixel)")
+  abline(v = enr$threshold, lwd = 2)
+  hist(v_obs, breaks = 50, main = paste0("Observado — ", basename(sc$obs)), xlab = "Riqueza (pixel)")
+  abline(v = enr$threshold, lwd = 2)
+  par(mfrow = c(1, 1))
+  
+  if (!is.null(res_blk)) {
+    hist(res_blk$null, breaks = 50,
+         main = paste0("Null (perm) — ", sc$id, " — média (blocos fact=", fact, ")"),
+         xlab = "Estatística (média da riqueza por bloco)")
+    abline(v = res_blk$obs, lwd = 2)
+  } else {
+    plot.new()
+    title(main = paste0("Blocos (fact=", fact, "): pulado"))
+  }
+  
+  hist(enr$null, breaks = 50,
+       main = paste0("Null (enrichment) — ", sc$id, " — proporção >= q", q_top, " (pixel)"),
+       xlab = "Proporção de pixels acima do limiar")
+  abline(v = enr$obs_prop, lwd = 2)
+  
+  dev.off()
+  
+  # ===== TABELA =====
+  tab <- rbind(
+    row_perm(sc$id, "pixel", "mean",   res_mean),
+    row_perm(sc$id, "pixel", "median", res_med),
+    row_enr (sc$id, "pixel", enr)
+  )
+  if (!is.null(res_blk)) {
+    tab <- rbind(tab, row_perm(sc$id, paste0("block_fact", fact), "mean", res_blk))
+  }
+  
+  write.csv(tab, file.path(out_dir, paste0("sintese__", sc$id, ".csv")), row.names = FALSE)
+  
+  rm(res_mean, res_med, enr, res_blk); gc()
+  tab
+}
+
+
+# ============================================================
+# 7) RODAR E CONSOLIDAR
+# ============================================================
+tabs <- lapply(
+  scenarios, run_scenario,
+  base_dir = base_dir,
+  out_dir  = out_dir,
+  n_perm   = n_perm,
+  q_top    = q_top,
+  fact     = fact,
+  seed_base = 1000
 )
 
-print(tab_sintese)
+tab_all <- safe_rbind_tabs(tabs, expected_cols)
 
-# (Opcional, mas recomendado) salvar a tabela síntese também
-write.csv(tab_sintese, file.path(out_dir, "sintese_testes_riqueza.csv"), row.names = FALSE)
+if (nrow(tab_all) > 0) {
+  write.csv(tab_all, file.path(out_dir, "sintese__todos_cenarios.csv"), row.names = FALSE)
+  print(tab_all)
+} else {
+  warning("Nenhum cenário gerou resultados (todos SKIP por arquivos faltando ou geometrias incompatíveis).")
+}
 
 # ============================================================
-# 9) METADADOS (CSV) — SIGNIFICADO DE CADA COLUNA DA TABELA SÍNTESE
+# 8) METADADOS (CSV) — SEM DEPENDER DE tab_all TER COLUNAS
 # ============================================================
+meta_significado <- c(
+  "Identificador do cenário (obs vs ref).",
+  "Escala de análise: pixel ou bloco (agregado).",
+  "Tipo de teste: perm (estatística) ou enrichment (topo).",
+  "Métrica usada no teste perm: mean/median (NA no enrichment).",
+  "Quantil (q) usado no enrichment (NA no perm).",
+  "Limiar (threshold) calculado na referência no quantil q (NA no perm).",
+  "Proporção observada no obs com valores >= threshold (apenas enrichment).",
+  "Proporção média sob H0 para enrichment (apenas enrichment).",
+  "Tamanho amostral do obs (número de células/blocos válidos).",
+  "Estatística observada (perm) (NA no enrichment).",
+  "Média da distribuição nula da estatística (perm) (NA no enrichment).",
+  "Diferença entre observado e nulo (perm: obs-null_mean; enrichment: obs_prop-null_prop).",
+  "Diferença percentual em relação ao nulo (NA se centro nulo = 0).",
+  "p-valor bicaudal por permutação."
+)
+
 meta_cols <- data.frame(
-  coluna = names(tab_sintese),
-  significado = c(
-    "Identificador do teste (área + métrica + escala).",
-    "Quantil (q) usado no teste de enriquecimento (proporção acima do topo da Caatinga). NA nos testes de permutação de estatística.",
-    "Valor de riqueza no quantil 'quantile' calculado na referência (Caatinga). NA nos testes de permutação de estatística.",
-    "Proporção observada de células na subárea com riqueza >= threshold (apenas enriquecimento). NA nos testes de permutação de estatística.",
-    "Média da proporção sob a hipótese nula (amostragem aleatória da Caatinga) para enriquecimento. NA nos testes de permutação de estatística.",
-    "Tamanho amostral da subárea (número de células/blocos usados no teste).",
-    "Estatística observada na subárea (ex.: média/mediana da riqueza). NA nos testes de enriquecimento.",
-    "Média da distribuição nula da estatística (permutações). NA nos testes de enriquecimento.",
-    "Diferença entre observado e nulo. Para permutação: obs - null_mean. Para enriquecimento: obs_prop - null_prop.",
-    "Diferença percentual em relação ao nulo. Para permutação: 100*(obs-null_mean)/null_mean. Para enriquecimento: 100*(obs_prop-null_prop)/null_prop (NA se null_prop=0).",
-    "p-valor bicaudal por permutação, comparando o afastamento do observado em relação ao centro da distribuição nula."
-  ),
+  coluna = expected_cols,
+  significado = meta_significado,
   stringsAsFactors = FALSE
 )
 
-write.csv(meta_cols, file.path(out_dir, "sintese_testes_riqueza__metadados_colunas.csv"), row.names = FALSE)
+write.csv(meta_cols, file.path(out_dir, "sintese__metadados_colunas.csv"), row.names = FALSE)
