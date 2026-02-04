@@ -9,11 +9,12 @@ library(readxl)
 bho_nv5 <- vect("sig/Shapes/geoft_bho_ach_otto_nivel_05.gpkg")
 
 # Bacia nivel 4
-chafariz_buffer <- vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") %>% 
+# chafariz_buffer <- vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") %>% 
+chafariz_buffer <- vect("sig/Shapes/01. CHAFARIZ/novos/AII_CEC_nova.shp") %>% 
   project("EPSG:4674")
 
-chafariz_pts <- vect("sig/Shapes/01. CHAFARIZ/prj_Aerogeradores_pt_CHAFARIZ.shp") %>% 
-  project("EPSG:4674")
+# chafariz_pts <- vect("sig/Shapes/01. CHAFARIZ/prj_Aerogeradores_pt_CHAFARIZ.shp") %>% 
+#   project("EPSG:4674")
 
 # Bacias que contem chafariz
 bho_chafariz <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c(75622, 75646, 75624, 75628, 75848),]
@@ -63,10 +64,14 @@ riqueza_bin <- project(riqueza_bin, "EPSG:4674")
 
 caatinga <- vect("sig/Shapes/Caatinga shape/Caatinga.shp") |>
   project("EPSG:4674")
+buffer_impacto <- vect("sig/Shapes/01. CHAFARIZ/novos/AII_CEC_nova.shp") |>
+  project("EPSG:4674")
 area_impacto <- vect("sig/Shapes/01. CHAFARIZ/prj_Aerogeradores_pt_CHAFARIZ.shp") |>
   project("EPSG:4674")
-buffer_impacto <- vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") |>
-  project("EPSG:4674")
+
+# buffer_impacto <- vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") |>
+#   project("EPSG:4674")
+
 
 riqueza_buffer <- mask(riqueza_bin, buffer_impacto) |> trim()
 riqueza_bho_nv5 <- mask(riqueza_bin, bho_chafariz) |> trim()
@@ -161,6 +166,7 @@ writeRaster(riqueza_bin, "resultados/riqueza_caat_migratorias.tif", overwrite = 
 #---------------------------------#
 
 library(terra)
+library(dplyr)
 
 riqueza_bin <- rast("resultados/riqueza_caatinga.tif")
 riqueza_bho_nv5 <- rast("resultados/riqueza_bho.tif")
@@ -179,6 +185,26 @@ plot(s_buffer)
 riqueza_bin %>% values(mat=F, na.rm = T) %>% summary()
 riqueza_bho_nv5 %>% values(mat=F, na.rm = T) %>% summary()
 riqueza_buffer %>% values(mat=F, na.rm = T) %>% summary()
+
+
+
+
+
+riqueza_bho_nv5 <- rast("resultados/dezembro_2025/riqueza_bho_endemicas.tif")
+riqueza_buffer <- rast("resultados/riqueza_buffer_endemicas.tif")
+
+s_bho <- riqueza_bho_nv5 %>% values(mat=F, na.rm = T) %>% table()
+s_buffer <- riqueza_buffer %>% values(mat=F, na.rm = T) %>% table()
+
+plot(s_bho)
+plot(s_buffer)
+
+riqueza_bho_nv5 %>% values(mat=F, na.rm = T) %>% summary()
+riqueza_buffer %>% values(mat=F, na.rm = T) %>% summary()
+
+
+
+
 
 
 

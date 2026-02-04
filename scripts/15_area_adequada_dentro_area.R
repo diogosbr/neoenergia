@@ -11,7 +11,8 @@ dir_masked <- "resultados/chafariz/ensemble_v06/bin_masked_lulc/"
 dir_bin    <- "resultados/chafariz/ensemble_v06/bin/"
 target_crs <- "EPSG:5880"
 
-area_aoi <- terra::vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") |>
+#area_aoi <- terra::vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") |>
+area_aoi <- terra::vect("sig/Shapes/01. CHAFARIZ/novos/AII_CEC_nova.shp") |>
   terra::project(target_crs) |>
   terra::aggregate()  # dissolve/union
 
