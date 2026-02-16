@@ -29,6 +29,9 @@ occ_clean <- cc_val(
                     lon = 'decimallongitude',
                     lat = 'decimallatitude',
                     tests = c("equal", "outliers", "zeros"),
+                    outliers_method = "quantile",
+                    outliers_mtp = 6,  
+                    outliers_size = 10,
                     value = "clean") %>% 
   distinct()
 

@@ -98,9 +98,6 @@ library(readr)
 devtools::load_all("../splink/")
 
 api_key <- Sys.getenv("splink_api_key")
-if (identical(api_key, "") || is.na(api_key)) {
-  stop("Defina a variável de ambiente 'splink_api_key' antes de rodar o script.")
-}
 
 # Garante que as pastas de saída existam (não falha se já existirem)
 dir.create("dados/tabelas/gbif",   recursive = TRUE, showWarnings = FALSE)
@@ -115,7 +112,7 @@ splink_limit <- 50000L
 # =====================================================================
 
 spp_list <- read_csv(
-  "dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv",
+  "dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia_Oitis.csv",
   show_col_types = FALSE
 )
 
@@ -126,10 +123,6 @@ spp <- spp_list$`Nome válido` %>%
   .[. != ""]
 
 n_spp <- length(spp)
-
-if (n_spp == 0L) {
-  stop("Nenhuma espécie válida encontrada na coluna 'Nome válido'.")
-}
 
 # Colunas desejadas (para GBIF) – esquema fixo
 cols_to_keep <- c(
@@ -181,7 +174,7 @@ for (i in seq_along(spp)) {
     occ_search(
       scientificName = sp,
       hasCoordinate  = TRUE,
-      limit          = 20
+      limit          = 5000
     ),
     error = function(e) {
       warning(sprintf("Erro em occ_search() para '%s': %s", sp, conditionMessage(e)))
