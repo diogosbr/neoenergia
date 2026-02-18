@@ -1,4 +1,4 @@
-# Carregando os pacotes ---------------------------------------------------
+# Pacotes ----------------------------------------------------------------------
 library(readr)
 library(CoordinateCleaner)
 library(raster)
@@ -6,71 +6,88 @@ library(dismo)
 library(dplyr)
 library(spThin)
 
-# Importando os pontos de ocorrência --------------------------------------
-occ_raw <- read_csv("dados/tabelas/ocorrencias_limpas.csv")
+# Entrada ----------------------------------------------------------------------
+# Ocorrências já consolidadas e sem duplicatas (todas as fontes)
+occ_raw <- read_csv("dados/tabelas/ocorrencias_brutas_todas_nodup.csv")
 
-# Verifica inicio da tabela
+# Checagem rápida (visual) -----------------------------------------------------
 occ_raw
 
-# Seleciona as colunas de interesse
-occ_coord <- 
-  occ_raw %>% 
-    dplyr::select(species, decimallongitude, decimallatitude) %>% 
-    filter(!is.na(decimallongitude))
+# Selecionar colunas mínimas para limpeza --------------------------------------
+# Mantém: espécie pesquisada + coordenadas
+occ_coord <-
+  occ_raw %>%
+  dplyr::select(searched, decimallongitude, decimallatitude) %>%
+  filter(!is.na(decimallongitude))
 
-# Checando os dados de ocorrencia
+# Limpeza de coordenadas -------------------------------------------------------
+# 1) cc_val: validação geral (mantém apenas "clean")
+# 2) clean_coordinates: aplica testes específicos (igualdade, outliers, zeros)
 occ_clean <- cc_val(
-  x    = occ_coord,
-  lon  = "decimallongitude",
-  lat  = "decimallatitude",
+  x       = occ_coord,
+  lon     = "decimallongitude",
+  lat     = "decimallatitude",
   value   = "clean",
-  verbose = TRUE) %>% 
-  clean_coordinates(species = "species",
-                    lon = 'decimallongitude',
-                    lat = 'decimallatitude',
-                    tests = c("equal", "outliers", "zeros"),
-                    outliers_method = "quantile",
-                    outliers_mtp = 6,  
-                    outliers_size = 10,
-                    value = "clean") %>% 
+  verbose = TRUE
+) %>%
+  clean_coordinates(
+    species         = "searched",
+    lon             = "decimallongitude",
+    lat             = "decimallatitude",
+    tests           = c("equal", "outliers", "zeros"),
+    outliers_method = "quantile",
+    outliers_mtp    = 7,
+    outliers_size   = 10,
+    value           = "clean"
+  ) %>%
   distinct()
 
-# Número de ocorrências únicas
+# Diagnóstico: número de ocorrências antes/depois da limpeza -------------------
 nrow(occ_coord)
 nrow(occ_clean)
 
-spp_names <- unique(occ_clean$species)
+# Lista de espécies após limpeza ------------------------------------------------
+spp_names <- unique(occ_clean$searched)
 
-for (sp in unique(occ_clean$species)) {
-  occs <- subset(occ_clean, species == sp)
+# Rarefação espacial (spThin) --------------------------------------------------
+# Objetivo: reduzir autocorrelação espacial (ex.: 10 km entre pontos), por espécie
+for (sp in unique(occ_clean$searched)) {
   
-  thin(loc.data  = occs,
-       long.col  = "decimallongitude",
-       lat.col   = "decimallatitude",
-       spec.col  = "species",
-       thin.par  = 10,       # 10 km
-       reps      = 1,
-       write.files = TRUE,
-       out.dir   = "dados/tabelas/occ_thin/",
-       out.base  = paste0(sp, "_thinned"),
-       write.log.file = FALSE)
+  occs <- subset(occ_clean, searched == sp)
+  
+  thin(
+    loc.data       = occs,
+    long.col       = "decimallongitude",
+    lat.col        = "decimallatitude",
+    spec.col       = "searched",
+    thin.par       = 10,       # 10 km
+    reps           = 1,
+    write.files    = TRUE,
+    out.dir        = "dados/tabelas/occ_thin/",
+    out.base       = paste0(sp, "_thinned"),
+    write.log.file = FALSE
+  )
 }
 
-occ_thin <- list.files("dados/tabelas/occ_thin/", full.names = T, pattern = "csv$") %>% 
-  lapply(read_csv, show_col_types = FALSE) %>% bind_rows() %>% as.data.frame()
+# Consolidar arquivos gerados pelo spThin --------------------------------------
+occ_thin <- list.files("dados/tabelas/occ_thin/", full.names = T, pattern = "csv$") %>%
+  lapply(read_csv, show_col_types = FALSE) %>%
+  bind_rows() %>%
+  as.data.frame()
 
 write_csv(occ_thin, "dados/tabelas/ocorrencias_thin.csv")
 
-# Importando uma variável preditora
-var1 <- raster('dados/raster/bioclimaticas/brasil_sel/bio_02.tif')
+# Filtrar ocorrências válidas no raster ambiental ------------------------------
+# Exemplo: usa uma variável preditora para remover pontos fora da cobertura
+var1 <- raster("dados/raster/bioclimaticas/brasil_sel/bio_02.tif")
 
-# Removendo dados com 'NA'
-occ_modelagem <- occ_thin[!is.na(extract(var1, occ_thin[,-1])),]
+# Remove pontos que caem em células com NA (fora do raster/sem valor)
+occ_modelagem <- occ_thin[!is.na(extract(var1, occ_thin[, -1])), ]
 
-# Número de ocorrências dentro do raster, com valores ambientais associados
-# Número de ocorrências únicas por pixel, com valores e sem inconcistencias
+# Diagnóstico: total rarefeito vs. total com valores ambientais -----------------
 nrow(occ_thin)
 nrow(occ_modelagem)
 
-# Salvando no disco
+# Saída ------------------------------------------------------------------------
+# Tabela final de ocorrências para modelagem (limpas, rarefeitas e com valores)
 write_csv(occ_modelagem, "dados/tabelas/ocorrencias_modelagem.csv")
