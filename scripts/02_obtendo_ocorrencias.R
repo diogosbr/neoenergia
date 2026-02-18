@@ -216,6 +216,8 @@ for (i in seq_along(spp)) {
     occ <- occ[, cols_to_keep]
   }
   
+  occ$searched <- sp
+  
   # Salvando a tabela do GBIF no disco rígido
   write_csv(
     occ,
@@ -248,6 +250,8 @@ for (i in seq_along(spp)) {
       .obs           = 0L
     )
   }
+  
+  resultados$searched <- sp
   
   write_csv(
     resultados,
