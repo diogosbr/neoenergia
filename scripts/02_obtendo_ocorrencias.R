@@ -108,7 +108,7 @@ dir.create("dados/tabelas/gbif",   recursive = TRUE, showWarnings = FALSE)
 dir.create("dados/tabelas/splink", recursive = TRUE, showWarnings = FALSE)
 
 # Limites de download (ajuste se quiser ser mais/menos conservador)
-gbif_limit   <- 50000L
+gbif_limit   <- 10000L
 splink_limit <- 50000L
 
 # ==============================================================================
@@ -129,6 +129,8 @@ spp <- spp_list$`Nome válido` %>%
   .[. != ""]
 
 n_spp <- length(spp)
+
+ids <- spp_list$ID
 
 # Colunas desejadas (GBIF) – esquema fixo de exportação
 cols_to_keep <- c(
@@ -164,11 +166,10 @@ for (i in seq_along(spp)) {
   
   sp <- spp[i]
   
+  id <- ids[i]
+  
   # Atualiza barra de progresso
   progress_bar(i, n_spp, start_time)
-  
-  # Segurança extra contra entradas vazias
-  if (is.na(sp) || !nzchar(sp)) next
   
   # Nome "seguro" para arquivo (evita problemas com espaços/acentos)
   sp_safe <- sanitize_species_name(sp)
@@ -182,7 +183,7 @@ for (i in seq_along(spp)) {
     occ_search(
       scientificName = sp,
       hasCoordinate  = TRUE,
-      limit          = 5000
+      limit          = gbif_limit
     ),
     error = function(e) {
       warning(sprintf("Erro em occ_search() para '%s': %s", sp, conditionMessage(e)))
@@ -224,6 +225,7 @@ for (i in seq_along(spp)) {
   
   # Coluna auxiliar: nome originalmente pesquisado
   occ$searched <- sp
+  occ$ID <- id
   
   # Salva tabela do GBIF por espécie
   write_csv(
@@ -262,6 +264,7 @@ for (i in seq_along(spp)) {
   
   # Coluna auxiliar: nome originalmente pesquisado
   resultados$searched <- sp
+  resultados$ID <- id
   
   # Salva tabela do speciesLink por espécie
   write_csv(
