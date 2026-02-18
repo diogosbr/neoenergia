@@ -1,8 +1,8 @@
-# =====================================================================
+# ==============================================================================
 # Funções auxiliares
-# =====================================================================
+# ==============================================================================
 
-# Formata tempos tipo "2 min 30 sec" ou "1 h 05 min"
+# Formata tempos (difftime) como "2 min 30 sec" ou "1 h 05 min"
 format_time_hms <- function(x) {
   total_sec <- as.numeric(x, units = "secs")
   if (is.na(total_sec)) return("NA")
@@ -21,9 +21,10 @@ format_time_hms <- function(x) {
   paste(parts, collapse = " ")
 }
 
-# Barra de progresso simples, baseada em número de iterações
+# Barra de progresso simples por iteração (exibe % + tempo decorrido + ETA)
 progress_bar <- function(i, total_iterations, start_time, bar_width = 30) {
   
+  # Protege contra entradas inválidas
   if (total_iterations <= 0L || i <= 0L) {
     return(invisible(NULL))
   }
@@ -49,6 +50,7 @@ progress_bar <- function(i, total_iterations, start_time, bar_width = 30) {
     format_time_hms(estimated_time_left)
   )
   
+  # \r sobrescreve a linha; espaços ao final evitam "sobras" na saída anterior
   cat("\r", line, "        ")
   
   if (i == total_iterations) cat("\n")
@@ -65,7 +67,7 @@ sanitize_species_name <- function(x) {
   x
 }
 
-# Cria uma linha vazia padrão para GBIF, preservando tipos
+# Cria uma linha vazia padrão para GBIF, preservando tipos (quando não há retorno)
 make_empty_gbif_row <- function(scientific_name) {
   tibble::tibble(
     kingdom          = NA_character_,
@@ -87,16 +89,18 @@ make_empty_gbif_row <- function(scientific_name) {
   )
 }
 
-# =====================================================================
+# ==============================================================================
 # Pacotes e configurações
-# =====================================================================
+# ==============================================================================
 
 library(rgbif)
 library(dplyr)
 library(readr)
 
+# Carrega o pacote local (speciesLink wrapper)
 devtools::load_all("../splink/")
 
+# Chave de API do speciesLink (via variável de ambiente)
 api_key <- Sys.getenv("splink_api_key")
 
 # Garante que as pastas de saída existam (não falha se já existirem)
@@ -107,15 +111,17 @@ dir.create("dados/tabelas/splink", recursive = TRUE, showWarnings = FALSE)
 gbif_limit   <- 50000L
 splink_limit <- 50000L
 
-# =====================================================================
+# ==============================================================================
 # Lista de espécies
-# =====================================================================
+# ==============================================================================
 
+# Lista (CSV) com a coluna "Nome válido" contendo os nomes científicos
 spp_list <- read_csv(
   "dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia_Oitis.csv",
   show_col_types = FALSE
 )
 
+# Vetor final de espécies, sem duplicatas e sem valores vazios
 spp <- spp_list$`Nome válido` %>%
   unique() %>%
   na.omit() %>%
@@ -124,7 +130,7 @@ spp <- spp_list$`Nome válido` %>%
 
 n_spp <- length(spp)
 
-# Colunas desejadas (para GBIF) – esquema fixo
+# Colunas desejadas (GBIF) – esquema fixo de exportação
 cols_to_keep <- c(
   "kingdom", "phylum", "order", "family", "genus",
   "year", "month",
@@ -138,7 +144,7 @@ cols_to_keep <- c(
   "country", "stateProvince"
 )
 
-# Tipos esperados por coluna (para as colunas que faltarem)
+# Tipos esperados por coluna (usado ao criar colunas ausentes)
 char_cols <- c(
   "kingdom", "phylum", "order", "family", "genus",
   "institutionCode", "collectionCode", "identifiedBy",
@@ -148,9 +154,9 @@ char_cols <- c(
 int_cols <- c("year", "month")
 num_cols <- c("decimalLongitude", "decimalLatitude")
 
-# =====================================================================
+# ==============================================================================
 # Loop principal sobre as espécies
-# =====================================================================
+# ==============================================================================
 
 start_time <- Sys.time()
 
@@ -164,12 +170,14 @@ for (i in seq_along(spp)) {
   # Segurança extra contra entradas vazias
   if (is.na(sp) || !nzchar(sp)) next
   
-  # Nome "seguro" para o arquivo (evita problemas com espaços, acentos etc.)
+  # Nome "seguro" para arquivo (evita problemas com espaços/acentos)
   sp_safe <- sanitize_species_name(sp)
   
-  # -------------------------------------------------------------------
-  # 1) Obtendo os pontos de ocorrência do GBIF
-  # -------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # 1) Ocorrências GBIF
+  # ---------------------------------------------------------------------------
+  
+  # Busca no GBIF (com coordenadas); em erro, mantém estrutura esperada
   occ_raw <- tryCatch(
     occ_search(
       scientificName = sp,
@@ -178,24 +186,22 @@ for (i in seq_along(spp)) {
     ),
     error = function(e) {
       warning(sprintf("Erro em occ_search() para '%s': %s", sp, conditionMessage(e)))
-      # Mantém a estrutura esperada
       list(data = NULL)
     }
   )
   
-  # Caso sem dados (data NULL ou sem linhas)
+  # Caso sem dados (data NULL ou sem linhas): cria linha vazia padronizada
   if (is.null(occ_raw$data) || nrow(occ_raw$data) == 0) {
     
     occ <- make_empty_gbif_row(sp)
     
   } else {
     
-    # Seleciona apenas as colunas que existem
+    # Seleciona apenas colunas disponíveis (mantendo o esquema alvo)
     occ <- occ_raw$data %>%
       select(any_of(cols_to_keep))
     
-    # Garante que todas as colunas de interesse existam,
-    # criando as que faltarem com o tipo adequado
+    # Garante que todas as colunas de interesse existam (com tipos consistentes)
     missing_cols <- setdiff(cols_to_keep, names(occ))
     
     if (length(missing_cols) > 0) {
@@ -212,21 +218,24 @@ for (i in seq_along(spp)) {
       }
     }
     
-    # Reordena as colunas na ordem padrão
+    # Reordena colunas na ordem padrão definida em cols_to_keep
     occ <- occ[, cols_to_keep]
   }
   
+  # Coluna auxiliar: nome originalmente pesquisado
   occ$searched <- sp
   
-  # Salvando a tabela do GBIF no disco rígido
+  # Salva tabela do GBIF por espécie
   write_csv(
     occ,
     file = file.path("dados", "tabelas", "gbif", paste0("ocorrencias_", sp_safe, "_gbif.csv"))
   )
   
-  # -------------------------------------------------------------------
-  # 2) Obtendo os pontos de ocorrência do speciesLink (splink)
-  # -------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # 2) Ocorrências speciesLink (splink)
+  # ---------------------------------------------------------------------------
+  
+  # Busca no speciesLink via get_data(); em erro, retorna NULL
   resultados <- tryCatch(
     get_data(
       list_data = list(
@@ -242,7 +251,7 @@ for (i in seq_along(spp)) {
     }
   )
   
-  # Se não vier nada do speciesLink, salva um registro mínimo
+  # Se não vier nada do speciesLink, salva um registro mínimo (controle de fluxo)
   if (is.null(resultados) || nrow(resultados) == 0) {
     resultados <- tibble::tibble(
       scientificName = sp,
@@ -251,8 +260,10 @@ for (i in seq_along(spp)) {
     )
   }
   
+  # Coluna auxiliar: nome originalmente pesquisado
   resultados$searched <- sp
   
+  # Salva tabela do speciesLink por espécie
   write_csv(
     resultados,
     file = file.path("dados", "tabelas", "splink", paste0("ocorrencias_", sp_safe, "_splink.csv"))
@@ -261,11 +272,11 @@ for (i in seq_along(spp)) {
 
 cat("\nDownload individual por espécie concluído.\n")
 
-# =====================================================================
+# ==============================================================================
 # Consolidação dos arquivos em tabelas únicas (GBIF + speciesLink)
-# =====================================================================
+# ==============================================================================
 
-# GBIF ------------------------------------------------------------------
+# GBIF -------------------------------------------------------------------------
 
 gbif_files <- list.files(
   "dados/tabelas/gbif",
@@ -273,6 +284,7 @@ gbif_files <- list.files(
   full.names = TRUE
 )
 
+# Consolida apenas se houver arquivos
 if (length(gbif_files) > 0) {
   occ_raw_gbif <- gbif_files %>%
     lapply(read_csv, show_col_types = FALSE) %>%
@@ -281,7 +293,7 @@ if (length(gbif_files) > 0) {
   write_csv(occ_raw_gbif, "dados/tabelas/ocorrencias_gbif.csv")
 }
 
-# speciesLink -----------------------------------------------------------
+# speciesLink ------------------------------------------------------------------
 
 splink_files <- list.files(
   "dados/tabelas/splink",
@@ -289,6 +301,7 @@ splink_files <- list.files(
   full.names = TRUE
 )
 
+# Consolida apenas se houver arquivos
 if (length(splink_files) > 0) {
   occ_raw_splink <- splink_files %>%
     lapply(function(f) {
