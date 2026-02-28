@@ -1,167 +1,364 @@
 library(terra)
-library(dplyr)
 library(readr)
 library(dplyr)
-library(terra)
-library(readxl)
+library(stringr)
+
+# Limites da Caatinga
+caatinga <- vect("sig/Shapes/Caatinga shape/Caatinga.shp") %>%
+  project("EPSG:4674")
 
 # Bacia nivel 5
 bho_nv5 <- vect("sig/Shapes/geoft_bho_ach_otto_nivel_05.gpkg")
 
-# Bacia nivel 4
-# chafariz_buffer <- vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") %>% 
-chafariz_buffer <- vect("sig/Shapes/01. CHAFARIZ/novos/AII_CEC_nova.shp") %>% 
-  project("EPSG:4674")
-
-# chafariz_pts <- vect("sig/Shapes/01. CHAFARIZ/prj_Aerogeradores_pt_CHAFARIZ.shp") %>% 
-#   project("EPSG:4674")
-
 # Bacias que contem chafariz
 bho_chafariz <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c(75622, 75646, 75624, 75628, 75848),]
+bho_luzia <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c(75622, 75624),]
+bho_oitis <- bho_nv5[bho_nv5$wts_cd_pfafstetterbasin %in% c( 74482, 76174, 74492, 74424),]
 
 rm(bho_nv5)
 
-# Tudo
-spp_list <- 
-  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
-  filter(Chafariz == "x") %>% select(`Nome válido`) %>% distinct() %>% pull()
+spp_list <- read_csv(
+  "dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia_Oitis.csv",
+  show_col_types = FALSE
+)
+
+# # Tudo
+# spp_all_chafariz <- spp_list %>% 
+#   filter(Chafariz == "x") %>% 
+#   select(`Nome válido`) %>% 
+#   pull() %>% 
+#   unique() %>%
+#   na.omit() %>%
+#   trimws() %>%
+#   .[. != ""]
+# 
+# spp_all_luzia <- spp_list %>% 
+#   filter(Luzia == "x") %>% 
+#   select(`Nome válido`) %>% 
+#   pull() %>% 
+#   unique() %>%
+#   na.omit() %>%
+#   trimws() %>%
+#   .[. != ""]
+# 
+# spp_all_oitis <- spp_list %>% 
+#   filter(Oitis == "x") %>% 
+#   select(`Nome válido`) %>% 
+#   pull() %>% 
+#   unique() %>%
+#   na.omit() %>%
+#   trimws() %>%
+#   .[. != ""]
 
 # endemica
-spp_list <- 
-  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
-  filter(Chafariz == "x", grepl("Endêmica.*", .$Endêmica)) %>% select(`Nome válido`) %>% distinct() %>% pull()
+spp_endemic_chafariz <- spp_list %>% 
+  filter(Chafariz == "x", grepl("Endêmica.*", .$Endêmica)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
+
+spp_endemic_luzia <- spp_list %>% 
+  filter(Luzia == "x", grepl("Endêmica.*", .$Endêmica)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
+
+spp_endemic_oitis <- spp_list %>% 
+  filter(Oitis == "x", grepl("Endêmica.*", .$Endêmica)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
 
 # ameaçada
-spp_list <- 
-  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
-  filter(Chafariz == "x", grepl("VU|EN", .$`Grau de proteção`)) %>% select(`Nome válido`) %>% distinct() %>% pull()
-  
+spp_threatened_chafariz <- spp_list %>% 
+  filter(Chafariz == "x", grepl("VU|EN", .$`Grau de proteção IUCN`)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
+
+spp_threatened_luzia <- spp_list %>% 
+  filter(Luzia == "x", grepl("VU|EN", .$`Grau de proteção IUCN`)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
+
+spp_threatened_oitis <- spp_list %>% 
+  filter(Oitis == "x", grepl("VU|EN", .$`Grau de proteção IUCN`)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
+
 # migratória
-spp_list <- 
-  read_csv("dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia.csv", show_col_types = FALSE) %>% 
-  filter(Chafariz == "x", grepl("igratória.*", .$Migratória)) %>% select(`Nome válido`) %>% distinct() %>% pull()
+spp_migratory_chafariz <- spp_list %>% 
+  filter(Chafariz == "x", grepl("igratória.*", .$Migratória)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
 
-# com os 4 algoritmos  
-# lista_geral <- list.files("resultados/chafariz/v03/", recursive = TRUE, full.names = TRUE)
-# 
-# lista_ensemble_bin <- lista_geral[grepl("models_ensemble/caatinga/bin_", lista_geral)]
-# 
-# lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
+spp_migratory_luzia <- spp_list %>% 
+  filter(Luzia == "x", grepl("igratória.*", .$Migratória)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
 
-# só RF
-lista_geral <- list.files("resultados/chafariz/v06/", recursive = TRUE, full.names = TRUE)
+spp_migratory_oitis <- spp_list %>% 
+  filter(Oitis == "x", grepl("igratória.*", .$Migratória)) %>% 
+  select(`Nome válido`) %>% 
+  pull() %>% 
+  unique() %>%
+  na.omit() %>%
+  trimws() %>%
+  .[. != ""]
 
-lista_ensemble_bin <- lista_geral[grepl("models_ensemble/caatinga/bin_", lista_geral)]
 
-lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
+# lista_chafariz <- list.files("resultados/areas/Chafariz/", pattern = "bin_", recursive = TRUE, full.names = TRUE)
+# lista_luzia <- list.files("resultados/areas/Luzia//", pattern = "bin_", recursive = TRUE, full.names = TRUE)
+# lista_oitis <- list.files("resultados/areas/Oitis//", pattern = "bin_", recursive = TRUE, full.names = TRUE)
 
-# sem bioblim
-# lista_ensemble_bin <- list.files("resultados/chafariz/ensemble_v03/bin//", recursive = TRUE, full.names = TRUE)
-# lista_ensemble_bin <- lista_ensemble_bin[grepl(spp_list %>% paste(collapse = "|"), lista_ensemble_bin)]
+lista_chafariz <- list.files("resultados/areas/Chafariz/", pattern = "bin_", recursive = TRUE, full.names = TRUE)
+lista_luzia <- list.files("resultados/areas/Luzia//", pattern = "bin_", recursive = TRUE, full.names = TRUE)
+lista_oitis <- list.files("resultados/areas/Oitis//", pattern = "bin_", recursive = TRUE, full.names = TRUE)
 
-riqueza_bin <- rast(lista_ensemble_bin) |> sum()
-riqueza_bin <- project(riqueza_bin, "EPSG:4674")
-
-caatinga <- vect("sig/Shapes/Caatinga shape/Caatinga.shp") |>
+area_total_chafariz <- vect("sig/Shapes/novos/cálculo área total/AREA TOTAL CEC_.shp") %>%
   project("EPSG:4674")
-buffer_impacto <- vect("sig/Shapes/01. CHAFARIZ/novos/AII_CEC_nova.shp") |>
-  project("EPSG:4674")
-area_impacto <- vect("sig/Shapes/01. CHAFARIZ/prj_Aerogeradores_pt_CHAFARIZ.shp") |>
+area_empreendimento_chafariz <- vect("sig/Shapes/novos/cálculo empreendimento/AII CEC.shp") %>%
   project("EPSG:4674")
 
-# buffer_impacto <- vect("sig/Shapes/01. CHAFARIZ/info_BUFFER_aerogeradores_pl_CHAFARIZ.shp") |>
-#   project("EPSG:4674")
+area_total_luzia <- vect("sig/Shapes/novos/cálculo área total/AREA TOTAL LUZIA_.shp") %>%
+  project("EPSG:4674")
+area_empreendimento_luzia <- vect("sig/Shapes/novos/cálculo empreendimento/AII LUZIA 2 E 3.shp") %>%
+  project("EPSG:4674")
 
+area_total_oitis <- vect("sig/Shapes/novos/cálculo área total/AREA TOTAL OITIS_.shp") %>%
+  project("EPSG:4674")
+area_empreendimento_oitis <- vect("sig/Shapes/novos/cálculo empreendimento/AII OITIS.shp") %>%
+  project("EPSG:4674")
 
-riqueza_buffer <- mask(riqueza_bin, buffer_impacto) |> trim()
-riqueza_bho_nv5 <- mask(riqueza_bin, bho_chafariz) |> trim()
+# Riqueza todas espécies ----
+riqueza_bin_chafariz <- rast(lista_chafariz) %>% sum()
+riqueza_bin_chafariz <- project(riqueza_bin_chafariz, "EPSG:4674")
 
-cols <- c(
-  "#103779", "#1B6F88", "#249E85", "#18C249", "#47DF1A",
-  "#C8F513", "#F1D822", "#ECAB21", "#D47631", "#C1543E"
-)
-pal <- grDevices::colorRampPalette(cols)
+riqueza_bin_luzia <- rast(lista_luzia) %>% sum()
+riqueza_bin_luzia <- project(riqueza_bin_luzia, "EPSG:4674")
+
+riqueza_bin_oitis <- rast(lista_oitis) %>% sum()
+riqueza_bin_oitis <- project(riqueza_bin_oitis, "EPSG:4674")
+
+riqueza_area_total_chafariz <- mask(riqueza_bin_chafariz, area_total_chafariz) %>% trim()
+riqueza_empreendimento_chafariz <- mask(riqueza_bin_chafariz, area_empreendimento_chafariz) %>% trim()
+
+riqueza_area_total_luzia <- mask(riqueza_bin_luzia, area_total_luzia) %>% trim()
+riqueza_empreendimento_luzia <- mask(riqueza_bin_luzia, area_empreendimento_luzia) %>% trim()
+
+riqueza_area_total_oitis <- mask(riqueza_bin_oitis, area_total_oitis) %>% trim()
+riqueza_empreendimento_oitis <- mask(riqueza_bin_oitis, area_empreendimento_oitis) %>% trim()
+
+# Riqueza espécies ameaçadas ----
+riqueza_bin_ameacadas_chafariz <- lista_chafariz %>% 
+  str_subset(
+    str_c(spp_threatened_chafariz, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_ameacadas_chafariz <- project(riqueza_bin_ameacadas_chafariz, "EPSG:4674")
+
+riqueza_bin_ameacadas_luzia <- lista_luzia %>% 
+  str_subset(
+    str_c(spp_threatened_luzia, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_ameacadas_luzia <- project(riqueza_bin_ameacadas_luzia, "EPSG:4674")
+
+riqueza_bin_ameacadas_oitis <- lista_oitis %>% 
+  str_subset(
+    str_c(spp_threatened_oitis, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_ameacadas_oitis <- project(riqueza_bin_ameacadas_oitis, "EPSG:4674")
+
+riqueza_ameacadas_area_total_chafariz <- mask(riqueza_bin_ameacadas_chafariz, area_total_chafariz) %>% trim()
+riqueza_ameacadas_empreendimento_chafariz <- mask(riqueza_bin_ameacadas_chafariz, area_empreendimento_chafariz) %>% trim()
+
+riqueza_ameacadas_area_total_luzia <- mask(riqueza_bin_ameacadas_luzia, area_total_luzia) %>% trim()
+riqueza_ameacadas_empreendimento_luzia <- mask(riqueza_bin_ameacadas_luzia, area_empreendimento_luzia) %>% trim()
+
+riqueza_ameacadas_area_total_oitis <- mask(riqueza_bin_ameacadas_oitis, area_total_oitis) %>% trim()
+riqueza_ameacadas_empreendimento_oitis <- mask(riqueza_bin_ameacadas_oitis, area_empreendimento_oitis) %>% trim()
+
+# Riqueza espécies endêmicas ----
+riqueza_bin_endemicas_chafariz <- lista_chafariz %>% 
+  str_subset(
+    str_c(spp_endemic_chafariz, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_endemicas_chafariz <- project(riqueza_bin_endemicas_chafariz, "EPSG:4674")
+
+riqueza_bin_endemicas_luzia <- lista_luzia %>% 
+  str_subset(
+    str_c(spp_endemic_luzia, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_endemicas_luzia <- project(riqueza_bin_endemicas_luzia, "EPSG:4674")
+
+riqueza_bin_endemicas_oitis <- lista_oitis %>% 
+  str_subset(
+    str_c(spp_endemic_oitis, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_endemicas_oitis <- project(riqueza_bin_endemicas_oitis, "EPSG:4674")
+
+riqueza_endemicas_area_total_chafariz <- mask(riqueza_bin_endemicas_chafariz, area_total_chafariz) %>% trim()
+riqueza_endemicas_empreendimento_chafariz <- mask(riqueza_bin_endemicas_chafariz, area_empreendimento_chafariz) %>% trim()
+
+riqueza_endemicas_area_total_luzia <- mask(riqueza_bin_endemicas_luzia, area_total_luzia) %>% trim()
+riqueza_endemicas_empreendimento_luzia <- mask(riqueza_bin_endemicas_luzia, area_empreendimento_luzia) %>% trim()
+
+riqueza_endemicas_area_total_oitis <- mask(riqueza_bin_endemicas_oitis, area_total_oitis) %>% trim()
+riqueza_endemicas_empreendimento_oitis <- mask(riqueza_bin_endemicas_oitis, area_empreendimento_oitis) %>% trim()
+
+# Riqueza espécies migratórias ----
+riqueza_bin_migratorias_chafariz <- lista_chafariz %>% 
+  str_subset(
+    str_c(spp_migratory_chafariz, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_migratorias_chafariz <- project(riqueza_bin_migratorias_chafariz, "EPSG:4674")
+
+riqueza_bin_migratorias_luzia <- lista_luzia %>% 
+  str_subset(
+    str_c(spp_migratory_luzia, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_migratorias_luzia <- project(riqueza_bin_migratorias_luzia, "EPSG:4674")
+
+riqueza_bin_migratorias_oitis <- lista_oitis %>% 
+  str_subset(
+    str_c(spp_migratory_oitis, collapse = "|")) %>% 
+  rast() %>% 
+  sum()
+riqueza_bin_migratorias_oitis <- project(riqueza_bin_migratorias_oitis, "EPSG:4674")
+
+riqueza_migratorias_area_total_chafariz <- mask(riqueza_bin_migratorias_chafariz, area_total_chafariz) %>% trim()
+riqueza_migratorias_empreendimento_chafariz <- mask(riqueza_bin_migratorias_chafariz, area_empreendimento_chafariz) %>% trim()
+
+riqueza_migratorias_area_total_luzia <- mask(riqueza_bin_migratorias_luzia, area_total_luzia) %>% trim()
+riqueza_migratorias_empreendimento_luzia <- mask(riqueza_bin_migratorias_luzia, area_empreendimento_luzia) %>% trim()
+
+riqueza_migratorias_area_total_oitis <- mask(riqueza_bin_migratorias_oitis, area_total_oitis) %>% trim()
+riqueza_migratorias_empreendimento_oitis <- mask(riqueza_bin_migratorias_oitis, area_empreendimento_oitis) %>% trim()
 
 
 # Salvar
-png("plots/mapa_riqueza_buffer.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_buffer, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
-
-png("plots/mapa_riqueza_bho_nv5.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_bho_nv5, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(bho_chafariz, add = T, pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
-
-png("plots/mapa_riqueza_caatinga.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_bin, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(bho_chafariz, add = T, pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
 
 
-boxplot(riqueza_buffer[])
-summary(riqueza_buffer[])
-hist(riqueza_buffer[], freq=T)
+# riqueza todas spp ----
+# Chafariz
+writeRaster(riqueza_bin_chafariz, "resultados/areas_riqueza/chafariz_riqueza_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_empreendimento_chafariz, "resultados/areas_riqueza/chafariz_riqueza_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_area_total_chafariz, "resultados/areas_riqueza/chafariz_riqueza_area_total.tif", overwrite = TRUE)
 
-writeRaster(riqueza_bin, "resultados/riqueza_caatinga.tif", overwrite = TRUE)
-writeRaster(riqueza_bho_nv5, "resultados/riqueza_bho.tif", overwrite = TRUE)
-writeRaster(riqueza_buffer, "resultados/riqueza_buffer.tif", overwrite = TRUE)
+# Luzia
+writeRaster(riqueza_bin_luzia, "resultados/areas_riqueza/luzia_riqueza_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_empreendimento_luzia, "resultados/areas_riqueza/luzia_riqueza_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_area_total_luzia, "resultados/areas_riqueza/luzia_riqueza_area_total.tif", overwrite = TRUE)
 
-png("plots/riqueza_buffer_endemicas.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_buffer, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
-
-writeRaster(riqueza_buffer, "resultados/riqueza_buffer_endemicas.tif", overwrite = TRUE)
-
-png("plots/riqueza_buffer_ameacadas.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_buffer, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
-
-writeRaster(riqueza_buffer, "resultados/riqueza_buffer_ameacadas.tif", overwrite = TRUE)
-
-png("plots/riqueza_buffer_migratorias.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_buffer, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
-
-writeRaster(riqueza_buffer, "resultados/riqueza_buffer_migratorias.tif", overwrite = TRUE)
+# Oitis
+writeRaster(riqueza_bin_oitis, "resultados/areas_riqueza/oitis_riqueza_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_empreendimento_oitis, "resultados/areas_riqueza/oitis_riqueza_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_area_total_oitis, "resultados/areas_riqueza/oitis_riqueza_area_total.tif", overwrite = TRUE)
 
 
+# riqueza endemicas ----
+# Chafariz
+writeRaster(riqueza_bin_endemicas_chafariz, "resultados/areas_riqueza/chafariz_riqueza_endemicas_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_endemicas_empreendimento_chafariz, "resultados/areas_riqueza/chafariz_riqueza_endemicas_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_endemicas_area_total_chafariz, "resultados/areas_riqueza/chafariz_riqueza_endemicas_area_total.tif", overwrite = TRUE)
 
-png("plots/riqueza_caat_endemicas.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_bin, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
+# Luzia
+writeRaster(riqueza_bin_endemicas_luzia, "resultados/areas_riqueza/luzia_riqueza_endemicas_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_endemicas_empreendimento_luzia, "resultados/areas_riqueza/luzia_riqueza_endemicas_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_endemicas_area_total_luzia, "resultados/areas_riqueza/luzia_riqueza_endemicas_area_total.tif", overwrite = TRUE)
 
-writeRaster(riqueza_bin, "resultados/riqueza_caat_endemicas.tif", overwrite = TRUE)
+# Oitis
+writeRaster(riqueza_bin_endemicas_oitis, "resultados/areas_riqueza/oitis_riqueza_endemicas_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_endemicas_empreendimento_oitis, "resultados/areas_riqueza/oitis_riqueza_endemicas_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_endemicas_area_total_oitis, "resultados/areas_riqueza/oitis_riqueza_endemicas_area_total.tif", overwrite = TRUE)
 
-png("plots/riqueza_caat_ameacadas.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_bin, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
+# riqueza ameaçadas ----
+# Chafariz
+writeRaster(riqueza_bin_ameacadas_chafariz, "resultados/areas_riqueza/chafariz_riqueza_ameacadas_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_ameacadas_empreendimento_chafariz, "resultados/areas_riqueza/chafariz_riqueza_ameacadas_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_ameacadas_area_total_chafariz, "resultados/areas_riqueza/chafariz_riqueza_ameacadas_area_total.tif", overwrite = TRUE)
 
-writeRaster(riqueza_bin, "resultados/riqueza_caat_ameacadas.tif", overwrite = TRUE)
+# Luzia
+writeRaster(riqueza_bin_ameacadas_luzia, "resultados/areas_riqueza/luzia_riqueza_ameacadas_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_ameacadas_empreendimento_luzia, "resultados/areas_riqueza/luzia_riqueza_ameacadas_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_ameacadas_area_total_luzia, "resultados/areas_riqueza/luzia_riqueza_ameacadas_area_total.tif", overwrite = TRUE)
 
-png("plots/riqueza_caat_migratorias.png", width = 2000, height = 1500, res = 300)
-plot(riqueza_bin, col = pal(20))
-plot(area_impacto, add = T, col = "white", pch = 16, cex = 0.6)
-plot(buffer_impacto, add = T, border = "red", lwd = 2)
-dev.off()
+# Oitis
+writeRaster(riqueza_bin_ameacadas_oitis, "resultados/areas_riqueza/oitis_riqueza_ameacadas_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_ameacadas_empreendimento_oitis, "resultados/areas_riqueza/oitis_riqueza_ameacadas_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_ameacadas_area_total_oitis, "resultados/areas_riqueza/oitis_riqueza_ameacadas_area_total.tif", overwrite = TRUE)
 
-writeRaster(riqueza_bin, "resultados/riqueza_caat_migratorias.tif", overwrite = TRUE)
+
+# riqueza migratórias ----
+# Chafariz
+writeRaster(riqueza_bin_migratorias_chafariz, "resultados/areas_riqueza/chafariz_riqueza_migratorias_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_migratorias_empreendimento_chafariz, "resultados/areas_riqueza/chafariz_riqueza_migratorias_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_migratorias_area_total_chafariz, "resultados/areas_riqueza/chafariz_riqueza_migratorias_area_total.tif", overwrite = TRUE)
+
+# Luzia
+writeRaster(riqueza_bin_migratorias_luzia, "resultados/areas_riqueza/luzia_riqueza_migratorias_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_migratorias_empreendimento_luzia, "resultados/areas_riqueza/luzia_riqueza_migratorias_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_migratorias_area_total_luzia, "resultados/areas_riqueza/luzia_riqueza_migratorias_area_total.tif", overwrite = TRUE)
+
+# Oitis
+writeRaster(riqueza_bin_migratorias_oitis, "resultados/areas_riqueza/oitis_riqueza_migratorias_caatinga.tif", overwrite = TRUE)
+writeRaster(riqueza_migratorias_empreendimento_oitis, "resultados/areas_riqueza/oitis_riqueza_migratorias_empreendimento.tif", overwrite = TRUE)
+writeRaster(riqueza_migratorias_area_total_oitis, "resultados/areas_riqueza/oitis_riqueza_migratorias_area_total.tif", overwrite = TRUE)
+
+
+
+# fim ----
+
+
+
+
+cols <- c(
+  "#03703a", "#2ea355",
+  "#7fc864", "#b9e176",
+  "#ecf7a4", "#fff2a5",
+  "#ffc16b", "#f7864f",
+  "#e1422e", "#ae0f1f")
+pal <- grDevices::colorRampPalette(cols)
+
+plot(riqueza_bin_chafariz, col = pal(40))
+plot(riqueza_bin_luzia, col = pal(40))
+plot(riqueza_bin_oitis, col = pal(40))
+
 
 #---------------------------------#
 
