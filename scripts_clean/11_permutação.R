@@ -7,8 +7,8 @@ n_perm <- 1e5
 q_top  <- 0.95
 fact   <- 5
 
-base_dir <- "/home/smaug/home/diogo/Documentos/github/neoenergia/resultados"
-out_dir  <- file.path(base_dir, "testes_riqueza")
+base_dir <- "/home/smaug/home/diogo/Documentos/github/neoenergia/resultados/areas_riqueza"
+out_dir  <- "/home/smaug/home/diogo/Documentos/github/neoenergia/resultados/areas_permut"
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # ============================================================
@@ -91,11 +91,6 @@ enrichment_test <- function(v_sub, v_ref, q = 0.95, n_perm = 9999, seed = 1, kee
 # ============================================================
 # 3) UTILITÁRIOS
 # ============================================================
-safe_rast <- function(path) {
-  if (!file.exists(path)) stop(paste0("Arquivo não encontrado: ", path))
-  rast(path)
-}
-
 get_vals <- function(r) {
   v <- values(r, mat = FALSE)
   v <- as.numeric(v)
@@ -103,8 +98,8 @@ get_vals <- function(r) {
 }
 
 # Checagem conservadora adequada ao seu caso:
-# - NÃO exige mesmo extent/nrow/ncol (buffer é recorte)
-# - EXIGE CRS, resolução e origem compatíveis (evita erro)
+# - NÃO exige mesmo extent/nrow/ncol (empreendimento/area_total são recortes)
+# - EXIGE CRS, resolução e origem compatíveis
 is_compatible_sampling <- function(r_ref, r_obs, tol = 1e-9) {
   ok_crs <- same.crs(r_ref, r_obs)
   ok_res <- isTRUE(all.equal(res(r_ref), res(r_obs), tolerance = tol))
@@ -112,31 +107,78 @@ is_compatible_sampling <- function(r_ref, r_obs, tol = 1e-9) {
   ok_crs && ok_res && ok_org
 }
 
-geom_brief <- function(r) {
-  list(
-    crs = crs(r),
-    res = res(r),
-    origin = origin(r),
-    ext = ext(r)
-  )
+# ============================================================
+# 4) CENÁRIOS (AUTO A PARTIR DOS .TIF EXISTENTES)
+# ============================================================
+tif_files <- list.files(base_dir, pattern = "\\.tif$", full.names = FALSE)
+
+rx <- "^(chafariz|luzia|oitis)_riqueza(?:_(ameacadas|endemicas|migratorias))?_(caatinga|area_total|empreendimento)\\.tif$"
+m  <- regexec(rx, tif_files)
+mm <- regmatches(tif_files, m)
+
+# Monta tabela (site, grupo, recorte)
+tab_files <- do.call(
+  rbind,
+  lapply(seq_along(mm), function(i) {
+    if (length(mm[[i]]) == 0) return(NULL)
+    data.frame(
+      file   = tif_files[i],
+      site   = mm[[i]][2],
+      grupo  = ifelse(is.na(mm[[i]][3]) || mm[[i]][3] == "", "todas", mm[[i]][3]),
+      recorte = mm[[i]][4],
+      stringsAsFactors = FALSE
+    )
+  })
+)
+
+if (is.null(tab_files) || nrow(tab_files) == 0) {
+  stop("Nenhum .tif com padrão esperado foi encontrado em base_dir.")
 }
 
-# ============================================================
-# 4) CENÁRIOS (APENAS OS QUE VOCÊ PEDIU)
-# ============================================================
-scenarios <- list(
-  list(id = "buffer_vs_bho__todas",            obs = "riqueza_buffer.tif",             ref = "riqueza_bho.tif"),
-  list(id = "buffer_vs_caatinga__todas",       obs = "riqueza_buffer.tif",             ref = "riqueza_caatinga.tif"),
-  
-  list(id = "buffer_vs_bho__endemicas",        obs = "riqueza_buffer_endemicas.tif",   ref = "riqueza_bho_endemicas.tif"),
-  list(id = "buffer_vs_caatinga__endemicas",   obs = "riqueza_buffer_endemicas.tif",   ref = "riqueza_caatinga_endemicas.tif"),
-  
-  list(id = "buffer_vs_bho__ameacadas",        obs = "riqueza_buffer_ameacadas.tif",   ref = "riqueza_bho_ameacadas.tif"),
-  list(id = "buffer_vs_caatinga__ameacadas",   obs = "riqueza_buffer_ameacadas.tif",   ref = "riqueza_caatinga_ameacadas.tif"),
-  
-  list(id = "buffer_vs_bho__migratorias",      obs = "riqueza_buffer_migratorias.tif", ref = "riqueza_bho_migratorias.tif"),
-  list(id = "buffer_vs_caatinga__migratorias", obs = "riqueza_buffer_migratorias.tif", ref = "riqueza_caatinga_migratorias.tif")
-)
+get_file <- function(site, grupo, recorte) {
+  x <- tab_files$file[tab_files$site == site & tab_files$grupo == grupo & tab_files$recorte == recorte]
+  if (length(x) == 0) return(NA_character_)
+  x[1]
+}
+
+sites  <- sort(unique(tab_files$site))
+grupos <- sort(unique(tab_files$grupo))
+
+scenarios <- list()
+k <- 0L
+
+for (s in sites) {
+  for (g in grupos) {
+    
+    obs_emp <- get_file(s, g, "empreendimento")
+    ref_at  <- get_file(s, g, "area_total")
+    ref_caa <- get_file(s, g, "caatinga")
+    
+    # OBS = empreendimento vs REF = area_total
+    if (!is.na(obs_emp) && !is.na(ref_at)) {
+      k <- k + 1L
+      scenarios[[k]] <- list(
+        id  = paste0(s, "__empreendimento_vs_area_total__", g),
+        obs = obs_emp,
+        ref = ref_at
+      )
+    }
+    
+    # OBS = empreendimento vs REF = caatinga
+    if (!is.na(obs_emp) && !is.na(ref_caa)) {
+      k <- k + 1L
+      scenarios[[k]] <- list(
+        id  = paste0(s, "__empreendimento_vs_caatinga__", g),
+        obs = obs_emp,
+        ref = ref_caa
+      )
+    }
+  }
+}
+
+if (length(scenarios) == 0) {
+  stop("Nenhum cenário foi montado (faltam arquivos obs/ref para os pares esperados).")
+}
 
 # ============================================================
 # 5) FORMATO DA TABELA E FUNÇÕES DE LINHA
@@ -208,7 +250,7 @@ safe_rbind_tabs <- function(tabs, expected_cols) {
 }
 
 # ============================================================
-# 6) FUNÇÃO PRINCIPAL (ESTAVA FALTANDO NO SEU SCRIPT)
+# 6) FUNÇÃO PRINCIPAL
 # ============================================================
 run_scenario <- function(sc, base_dir, out_dir, n_perm, q_top, fact, seed_base = 1000) {
   obs_path <- file.path(base_dir, sc$obs)
@@ -228,10 +270,10 @@ run_scenario <- function(sc, base_dir, out_dir, n_perm, q_top, fact, seed_base =
   r_obs <- rast(obs_path)
   r_ref <- rast(ref_path)
   
-  # Mantém o seu warning "completo"
+  # Mantém o warning "completo"
   assert_same_geom(r_ref, r_obs, label = sc$id)
   
-  # Conservador do jeito certo: ignora extent, mas exige CRS/res/origin
+  # Conservador: ignora extent, mas exige CRS/res/origin
   if (!is_compatible_sampling(r_ref, r_obs)) {
     warning(paste0(
       "[SKIP] Incompatível para amostragem (CRS/res/origin) no cenário: ", sc$id, "\n",
@@ -324,17 +366,16 @@ run_scenario <- function(sc, base_dir, out_dir, n_perm, q_top, fact, seed_base =
   tab
 }
 
-
 # ============================================================
 # 7) RODAR E CONSOLIDAR
 # ============================================================
 tabs <- lapply(
   scenarios, run_scenario,
-  base_dir = base_dir,
-  out_dir  = out_dir,
-  n_perm   = n_perm,
-  q_top    = q_top,
-  fact     = fact,
+  base_dir  = base_dir,
+  out_dir   = out_dir,
+  n_perm    = n_perm,
+  q_top     = q_top,
+  fact      = fact,
   seed_base = 1000
 )
 
@@ -348,7 +389,7 @@ if (nrow(tab_all) > 0) {
 }
 
 # ============================================================
-# 8) METADADOS (CSV) — SEM DEPENDER DE tab_all TER COLUNAS
+# 8) METADADOS (CSV)
 # ============================================================
 meta_significado <- c(
   "Identificador do cenário (obs vs ref).",
