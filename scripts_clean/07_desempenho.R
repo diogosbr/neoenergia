@@ -1,7 +1,7 @@
 library(readr)
 library(dplyr)
 
-output <- "resultados/chafariz/v06//"
+output <- "resultados/tudo/v01/"
 
 # Ocorrências ----
 occ_all <- read_csv("dados/tabelas/ocorrencias_modelagem.csv")
@@ -51,3 +51,15 @@ eval_list %>%
     .groups = "drop"
   ) %>%
   arrange(spec)
+
+eval_list %>%
+  group_by(algorithm, partiton, species) %>%
+  summarise(
+    sens = sensitivity,
+    spec = specificity,
+    .groups = "drop"
+  ) %>%
+  arrange(spec) %>% 
+  select(spec) %>% 
+  pull() %>% 
+  hist()
