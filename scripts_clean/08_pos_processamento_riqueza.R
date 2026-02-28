@@ -3,10 +3,6 @@ library(readr)
 library(dplyr)
 library(stringr)
 
-# Limites da Caatinga
-caatinga <- vect("sig/Shapes/Caatinga shape/Caatinga.shp") %>%
-  project("EPSG:4674")
-
 # Bacia nivel 5
 bho_nv5 <- vect("sig/Shapes/geoft_bho_ach_otto_nivel_05.gpkg")
 
@@ -21,34 +17,6 @@ spp_list <- read_csv(
   "dados/tabelas/Espécies Modelagem BEI.xlsx - Chafariz_Luzia_Oitis.csv",
   show_col_types = FALSE
 )
-
-# # Tudo
-# spp_all_chafariz <- spp_list %>% 
-#   filter(Chafariz == "x") %>% 
-#   select(`Nome válido`) %>% 
-#   pull() %>% 
-#   unique() %>%
-#   na.omit() %>%
-#   trimws() %>%
-#   .[. != ""]
-# 
-# spp_all_luzia <- spp_list %>% 
-#   filter(Luzia == "x") %>% 
-#   select(`Nome válido`) %>% 
-#   pull() %>% 
-#   unique() %>%
-#   na.omit() %>%
-#   trimws() %>%
-#   .[. != ""]
-# 
-# spp_all_oitis <- spp_list %>% 
-#   filter(Oitis == "x") %>% 
-#   select(`Nome válido`) %>% 
-#   pull() %>% 
-#   unique() %>%
-#   na.omit() %>%
-#   trimws() %>%
-#   .[. != ""]
 
 # endemica
 spp_endemic_chafariz <- spp_list %>% 
