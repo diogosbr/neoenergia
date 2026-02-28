@@ -15,10 +15,23 @@ occ_raw
 
 # Selecionar colunas mínimas para limpeza --------------------------------------
 # Mantém: espécie pesquisada + coordenadas
+# occ_coord <-
+#   occ_raw %>%
+#   dplyr::select(searched, decimallongitude, decimallatitude) %>%
+#   filter(!is.na(decimallongitude))
+
 occ_coord <-
   occ_raw %>%
   dplyr::select(searched, decimallongitude, decimallatitude) %>%
-  filter(!is.na(decimallongitude))
+  filter(
+    !is.na(searched),
+    !is.na(decimallongitude),
+    !is.na(decimallatitude)
+  ) %>%
+  mutate(
+    decimallongitude = as.numeric(decimallongitude),
+    decimallatitude  = as.numeric(decimallatitude)
+  )
 
 # Limpeza de coordenadas -------------------------------------------------------
 # 1) cc_val: validação geral (mantém apenas "clean")
@@ -70,8 +83,24 @@ for (sp in unique(occ_clean$searched)) {
 }
 
 # Consolidar arquivos gerados pelo spThin --------------------------------------
-occ_thin <- list.files("dados/tabelas/occ_thin/", full.names = T, pattern = "csv$") %>%
-  lapply(read_csv, show_col_types = FALSE) %>%
+# occ_thin <- list.files("dados/tabelas/occ_thin/", full.names = T, pattern = "csv$") %>%
+#   lapply(read_csv, show_col_types = FALSE) %>%
+#   bind_rows() %>%
+#   as.data.frame()
+
+occ_thin <- list.files("dados/tabelas/occ_thin/", full.names = TRUE, pattern = "csv$") %>%
+  lapply(function(f)
+    read_csv(
+      f,
+      show_col_types = FALSE,
+      col_types = cols(
+        searched         = col_character(),
+        decimallongitude = col_double(),
+        decimallatitude  = col_double(),
+        .default         = col_guess()
+      )
+    )
+  ) %>%
   bind_rows() %>%
   as.data.frame()
 
