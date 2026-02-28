@@ -15,10 +15,6 @@ occ_all <- read_csv("dados/tabelas/ocorrencias_modelagem.csv")
 # Lista de espécies a modelar ----
 spp <- unique(occ_all$searched)
 
-spp_done <- list.files(output)
-
-spp <- spp[!spp %in% spp_done]
-
 # Variáveis preditoras ----
 lista_fit  <- list.files(
   "dados/raster/bioclimaticas/brasil_sel/",
